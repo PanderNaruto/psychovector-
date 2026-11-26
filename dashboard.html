@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:,">
+    <title>Личный кабинет — PsychoVector</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body:not([data-role="psychologist"]) .only-psych,
+        body:not([data-role="admin"]) .only-admin { display: none !important; }
+    </style>
+</head>
+<body>
+    <div style="padding:16px 40px;font-size:14px;color:var(--text-muted);">
+        Личный кабинет <span id="role-label-text">пользователя</span>
+    </div>
+
+    <nav class="nav-bar">
+        <div class="logo">PsychoVector</div>
+        <div class="nav-links">
+            <a href="dashboard.html" class="active">Личный кабинет</a>
+            <a href="admin.html" class="only-admin" id="nav-admin">Админ-панель</a>
+            <a href="create-test.html" class="only-psych" id="nav-create-test">Создать тестирование</a>
+            <a href="my-tests.html" class="only-psych" id="nav-my-tests">Созданные тестирования</a>
+            <a href="results.html" id="nav-results">Результаты</a>
+        </div>
+        <button id="theme-toggle-btn" onclick="toggleTheme()" title="Переключить тему">🌙 Тёмная</button>
+        <button class="nav-logout" onclick="handleLogout()">Выйти</button>
+    </nav>
+
+    <div class="dashboard-header"><h1>Личный кабинет</h1></div>
+
+    <div class="dashboard-grid">
+        <div class="profile-card">
+            <div class="section-label">Мой профиль</div>
+            <div class="user-name" id="user-fullname">Фамилия Имя Отчество</div>
+            <div class="profile-btn" id="profile-role-btn">Профиль</div>
+            <hr class="profile-divider">
+            <div class="profile-info-item">
+                <div class="info-label">Дата рождения</div>
+                <div class="info-value" id="profile-birthdate">—</div>
+            </div>
+            <div id="psychologist-profile-fields" style="display:none;">
+                <div class="profile-info-item">
+                    <div class="info-label">Образование</div>
+                    <div class="info-value" id="profile-education">—</div>
+                </div>
+                <div class="profile-info-item">
+                    <div class="info-label">Квалификация</div>
+                    <div class="info-value" id="profile-qualification">—</div>
+                </div>
+            </div>
+            <button class="edit-profile-btn" onclick="openEditProfile()">Редактировать профиль</button>
+        </div>
+
+        <div class="create-test-card only-psych" id="create-test-card">
+            <div>
+                <h3>Создайте новое тестирование</h3>
+                <p>Введите вопросы и отправьте участникам ссылку для прохождения.</p>
+            </div>
+            <button class="create-test-btn" onclick="window.location.href='create-test.html'">+ Создать тестирование</button>
+        </div>
+
+        <div class="results-card only-psych" id="results-view-card">
+            <div>
+                <h3>Просмотр результатов</h3>
+                <p>Просматривайте ответы пользователей и индивидуальные результаты.</p>
+            </div>
+            <button class="results-link-btn" onclick="window.location.href='results.html'">Результаты пользователей →</button>
+        </div>
+
+        <div class="tests-table-card">
+            <div class="tests-table-header"><h3 id="tests-table-title">Последние тестирования</h3></div>
+            <table class="tests-table">
+                <thead>
+                    <tr>
+                        <th>Название</th>
+                        <th id="tests-table-second-col">Результат</th>
+                        <th>Статус</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="tests-table-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="edit-profile-modal">
+        <div class="modal">
+            <h3>Редактировать профиль</h3>
+            <div class="form-group"><label>ФИО</label><input type="text" id="edit-fullname" placeholder="Фамилия Имя Отчество"></div>
+            <div class="form-group"><label>Дата рождения</label><input type="date" id="edit-birthdate"></div>
+            <div id="psychologist-edit-fields" style="display:none;">
+                <div class="form-group">
+                    <label>Образование</label>
+                    <input type="text" id="edit-education" placeholder="Высшее психологическое, МГУ им. Ломоносова">
+                </div>
+                <div class="form-group">
+                    <label>Квалификация</label>
+                    <input type="text" id="edit-qualification" placeholder="Психолог. Преподаватель психологии">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeEditProfile()">Отмена</button>
+                <button class="btn-primary" onclick="saveProfile()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const user = requireAuth();
+            if (!user) return;
+
+            document.body.dataset.role = user.role;
+
+            const roleText = document.getElementById('role-label-text');
+            if (roleText) {
+                roleText.textContent = user.role === 'admin' ? 'администратора' : user.role === 'psychologist' ? 'психолога' : 'пользователя';
+            }
+
+            const navAdmin = document.getElementById('nav-admin');
+            const navCreateTest = document.getElementById('nav-create-test');
+            const navMyTests = document.getElementById('nav-my-tests');
+            const navResults = document.getElementById('nav-results');
+
+            [navAdmin, navCreateTest, navMyTests, navResults].forEach(el => { if (el) el.style.display = 'none'; });
+
+            if (user.role === 'admin') {
+                if (navAdmin) navAdmin.style.display = 'inline-block';
+            } else if (user.role === 'psychologist') {
+                if (navCreateTest) navCreateTest.style.display = 'inline-block';
+                if (navMyTests) navMyTests.style.display = 'inline-block';
+                if (navResults) navResults.style.display = 'inline-block';
+            } else {
+                if (navResults) navResults.style.display = 'inline-block';
+            }
+
+            const secondCol = document.getElementById('tests-table-second-col');
+            if (secondCol) secondCol.textContent = (user.role === 'psychologist') ? 'Прошли' : 'Результат';
+
+            loadDashboard();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Прохождение теста ВРР — PsychoVector</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="data:,">
+    <style>
+        .vrr-answer-options { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 16px; }
+        .vrr-answer-option { display: flex; flex-direction: column; align-items: center; padding: 16px 10px; border: 2px solid var(--border); border-radius: 10px; cursor: pointer; transition: all 0.2s; background: var(--white); }
+        .vrr-answer-option:hover { border-color: var(--medium-green); background: var(--lighter-green); }
+        .vrr-answer-option.selected { border-color: var(--dark-green); background: var(--light-green); }
+        .vrr-answer-option input[type="radio"] { margin-bottom: 8px; accent-color: var(--dark-green); transform: scale(1.2); }
+        .vrr-answer-option label { font-size: 12px; text-align: center; cursor: pointer; line-height: 1.3; }
+        .vrr-answer-option label strong { display: block; font-size: 18px; margin-top: 4px; color: var(--dark-green); }
+        .target-badge { display: inline-block; padding: 6px 14px; background: #e3f2fd; color: #1565c0; border-radius: 20px; font-size: 13px; font-weight: 600; margin-bottom: 16px; }
+        
+        .test-question-card { position: relative; transition: all 0.3s ease; }
+        .test-question-card.answered { border-left: 4px solid var(--dark-green); }
+        .test-question-card.answered .q-number { color: var(--dark-green); font-weight: 700; }
+        .test-question-card.current { box-shadow: 0 0 0 3px rgba(61,122,82,0.25); }
+
+        .question-nav { background: var(--white); border-radius: 12px; box-shadow: var(--shadow); padding: 16px 20px; margin-bottom: 24px; }
+        .question-nav-title { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 12px; font-weight: 600; }
+        .question-nav-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 8px; }
+        .nav-btn { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: 8px; background: var(--white); color: var(--text-muted); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+        .nav-btn:hover { border-color: var(--medium-green); transform: translateY(-2px); }
+        .nav-btn.answered { background: var(--dark-green); color: var(--white); border-color: var(--dark-green); }
+        .nav-btn.current { box-shadow: 0 0 0 3px rgba(61,122,82,0.3); }
+        .nav-legend { display: flex; gap: 16px; margin-top: 12px; font-size: 12px; color: var(--text-muted); flex-wrap: wrap; }
+        .nav-legend span { display: inline-flex; align-items: center; gap: 6px; }
+        .legend-dot { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
+        .legend-dot.done { background: var(--dark-green); }
+        .legend-dot.todo { background: var(--white); border: 1px solid var(--border); }
+    </style>
+</head>
+<body>
+    <nav class="nav-bar">
+        <div class="logo">PsychoVector</div>
+        <div class="nav-links">
+            <a href="dashboard.html">Личный кабинет</a>
+        </div>
+        <button id="theme-toggle-btn" onclick="toggleTheme()" title="Переключить тему">🌙 Тёмная</button>
+        <button class="nav-logout" onclick="handleLogout()">Выйти</button>
+    </nav>
+
+    <div class="page-container">
+        <h1 id="test-title-display">Название теста</h1>
+        <div id="target-badge-container"></div>
+        <p id="test-description-display" style="color:var(--text-muted);margin-bottom:24px;font-size:15px;"></p>
+
+        <div class="test-progress">
+            <div class="test-progress-bar" id="progress-bar" style="width:0%"></div>
+        </div>
+
+        <div class="question-nav">
+            <div class="question-nav-title">Навигация по вопросам</div>
+            <div class="question-nav-grid" id="question-nav-grid"></div>
+            <div class="nav-legend">
+                <span><i class="legend-dot done"></i> Отвечен</span>
+                <span><i class="legend-dot todo"></i> Не отвечен</span>
+            </div>
+        </div>
+
+        <div id="test-area">
+            <div id="questions-container"></div>
+            <div style="text-align:center;margin-top:32px;">
+                <button class="btn-primary" onclick="submitVRRTest()" style="padding:16px 48px;font-size:16px;">Завершить тестирование</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="js/app.js"></script>
+    <script src="js/vrr-methodology.js"></script>
+    <script>
+        let currentTest = null;
+        let answers = {};
+        let progressKey = '';
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadVRRTestForUser();
+        });
+
+        function getProgressKey(testId) {
+            const user = Storage.getCurrentUser();
+            const userId = user ? user.id : 'anonymous';
+            return `pv_vrr_progress_${testId}_${userId}`;
+        }
+
+        function saveProgress() {
+            if (!currentTest) return;
+            try {
+                localStorage.setItem(progressKey, JSON.stringify({
+                    answers: answers,
+                    savedAt: new Date().toISOString()
+                }));
+            } catch (e) {
+                console.warn('Не удалось сохранить прогресс:', e);
+            }
+        }
+
+        function loadProgress() {
+            try {
+                const saved = localStorage.getItem(progressKey);
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    answers = data.answers || {};
+                    return true;
+                }
+            } catch (e) {
+                console.warn('Не удалось загрузить прогресс:', e);
+            }
+            return false;
+        }
+
+        async function loadVRRTestForUser() {
+            const params = new URLSearchParams(window.location.search);
+            const testId = params.get('id');
+            const tests = await Storage.getTests();
+            currentTest = tests.find(t => t.id === testId);
+
+            if (!currentTest) {
+                document.getElementById('test-area').innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:40px;">Тест не найден.</p>';
+                return;
+            }
+
+            const user = Storage.getCurrentUser();
+            if (user) {
+                const results = await Storage.getResults();
+                const alreadyPassed = results.find(r => r.testId === testId && r.userId === user.id);
+
+                if (alreadyPassed) {
+                    document.getElementById('test-title-display').textContent = currentTest.title;
+                    document.getElementById('progress-bar').style.width = '100%';
+                    document.getElementById('test-area').innerHTML = `
+                        <div class="form-card" style="text-align:center;padding:48px;">
+                            <div style="font-size:64px;margin-bottom:16px;">✅</div>
+                            <h2 style="color:var(--dark-green);margin-bottom:16px;">Вы уже прошли этот тест</h2>
+                            <p style="font-size:15px;color:var(--text-muted);margin-bottom:24px;">Повторное прохождение невозможно.</p>
+                            <button class="btn-primary" onclick="window.location.href='dashboard.html'">Вернуться в кабинет</button>
+                        </div>
+                    `;
+                    return;
+                }
+            }
+
+            document.getElementById('test-title-display').textContent = currentTest.title;
+            document.getElementById('test-description-display').textContent = currentTest.description || '';
+
+            if (currentTest.methodData && currentTest.methodData.target) {
+                document.getElementById('target-badge-container').innerHTML = `<div class="target-badge">Оцениваемый: ${currentTest.methodData.target}</div>`;
+            }
+
+            progressKey = getProgressKey(testId);
+            const hasProgress = loadProgress();
+
+            const container = document.getElementById('questions-container');
+            container.innerHTML = '';
+
+            currentTest.questions.forEach((q, index) => {
+                const card = document.createElement('div');
+                card.className = 'test-question-card';
+                card.id = `question-${index}`;
+                if (answers[index] !== undefined) card.classList.add('answered');
+
+                const optionsHtml = q.options.map((opt, oi) => {
+                    const isSelected = answers[index] === opt.score ? 'selected' : '';
+                    const isChecked = answers[index] === opt.score ? 'checked' : '';
+                    return `
+                        <div class="vrr-answer-option ${isSelected}" onclick="selectVRRAnswer(this, ${index}, ${opt.score})">
+                            <input type="radio" name="q${index}" id="q${index}_${oi}" value="${opt.score}" ${isChecked}>
+                            <label for="q${index}_${oi}">${opt.text}<br><strong>${opt.score}</strong></label>
+                        </div>
+                    `;
+                }).join('');
+
+                card.innerHTML = `
+                    <div class="q-number">Вопрос ${index + 1} из ${currentTest.questions.length}</div>
+                    <div class="q-text">${q.text}</div>
+                    <div class="vrr-answer-options">
+                        ${optionsHtml}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            buildQuestionNav();
+            updateVRRProgress();
+        }
+
+        function selectVRRAnswer(element, questionIndex, score) {
+            const radio = element.querySelector('input[type="radio"]');
+            radio.checked = true;
+            element.closest('.test-question-card').querySelectorAll('.vrr-answer-option').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            answers[questionIndex] = score;
+            saveProgress();
+            updateVRRProgress();
+            
+            const card = document.querySelector(`.test-question-card[data-question-index="${questionIndex}"], #question-${questionIndex}`);
+            if (card) card.classList.add('answered');
+            updateNavButton(questionIndex);
+        }
+
+        function updateVRRProgress() {
+            if (!currentTest) return;
+            const total = currentTest.questions.length;
+            const answered = Object.keys(answers).length;
+            const pct = (answered / total) * 100;
+            const bar = document.getElementById('progress-bar');
+            if (bar) bar.style.width = pct + '%';
+        }
+
+        async function submitVRRTest() {
+            if (!currentTest) return;
+
+            const totalQuestions = currentTest.questions.length;
+            const answered = Object.keys(answers).length;
+
+            if (answered < totalQuestions) {
+                const missing = [];
+                for (let i = 0; i < totalQuestions; i++) {
+                    if (answers[i] === undefined) missing.push(i + 1);
+                }
+                showNotification(`Не отвечено на вопросы: ${missing.join(', ')}`, 'error');
+                return;
+            }
+
+            const user = Storage.getCurrentUser();
+            const form = currentTest.methodData.form;
+            const keys = VRR_METHOD.keys[form];
+            const percentiles = VRR_METHOD.percentiles[form];
+
+            const processedScales = {};
+            let totalRawScore = 0;
+
+            for (let scaleNum in keys) {
+                const scale = keys[scaleNum];
+                let sum = 0;
+
+                scale.q.forEach(qNum => {
+                    const answerIndex = qNum - 1;
+                    const score = answers[answerIndex];
+                    if (score !== undefined) {
+                        let finalScore = score;
+                        if (scale.rev.includes(qNum)) {
+                            finalScore = 6 - score;
+                        }
+                        sum += finalScore;
+                    }
+                });
+
+                if (scale.div2) {
+                    sum = sum / 2;
+                }
+
+                totalRawScore += sum;
+
+                let percentile = 100;
+                for (let p of [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]) {
+                    if (sum <= percentiles[p][scaleNum - 1]) {
+                        percentile = p;
+                        break;
+                    }
+                }
+
+                processedScales[scaleNum] = {
+                    name: scale.name,
+                    rawScore: sum,
+                    percentile: percentile,
+                    level: percentile <= 25 ? 'Низкий' : percentile <= 75 ? 'Средний' : 'Высокий'
+                };
+            }
+
+            const result = {
+                id: Date.now().toString(),
+                testId: currentTest.id,
+                testTitle: currentTest.title,
+                userId: user ? user.id : 'anonymous',
+                userName: user ? (user.fullName || user.login) : 'Аноним',
+                userEmail: user ? user.email : '',
+                answers: answers,
+                methodData: currentTest.methodData,
+                processedScales: processedScales,
+                totalRawScore: totalRawScore,
+                maxScore: totalQuestions * 5,
+                completedAt: new Date().toISOString()
+            };
+
+            const saved = await Storage.saveResult(result);
+
+            if (saved && saved.success) {
+                localStorage.removeItem(progressKey);
+
+                const tests = await Storage.getTests();
+                const testIdx = tests.findIndex(t => t.id === currentTest.id);
+                if (testIdx !== -1) {
+                    tests[testIdx].participants = (tests[testIdx].participants || 0) + 1;
+                    await Storage.saveTests(tests);
+                }
+
+                showNotification('Тест ВРР завершён! Результаты сохранены.', 'success');
+
+                document.getElementById('test-area').innerHTML = `
+                    <div class="form-card" style="text-align:center;padding:48px;">
+                        <div style="font-size:64px;margin-bottom:16px;">🎉</div>
+                        <h2 style="color:var(--dark-green);margin-bottom:16px;">Тест завершён!</h2>
+                        <p style="font-size:15px;color:var(--text-muted);margin-bottom:24px;">
+                            Обработано ${Object.keys(processedScales).length} шкал методики ВРР.
+                            Результаты отправлены психологу.
+                        </p>
+                        <button class="btn-primary" onclick="window.location.href='dashboard.html'" style="margin-top:24px;">Вернуться в кабинет</button>
+                    </div>
+                `;
+            } else {
+                showNotification('Ошибка сохранения результата', 'error');
+            }
+        }
+
+        function buildQuestionNav() {
+            const grid = document.getElementById('question-nav-grid');
+            if (!grid || !currentTest) return;
+            grid.innerHTML = '';
+            currentTest.questions.forEach((_, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'nav-btn' + (answers[index] !== undefined ? ' answered' : '');
+                btn.textContent = index + 1;
+                btn.title = `Перейти к вопросу ${index + 1}`;
+                btn.onclick = () => jumpToQuestion(index);
+                grid.appendChild(btn);
+            });
+        }
+
+        function updateNavButton(index) {
+            const btn = document.querySelectorAll('.nav-btn')[index];
+            if (btn) btn.classList.add('answered');
+        }
+
+        function jumpToQuestion(index) {
+            const el = document.getElementById(`question-${index}`);
+            if (!el) return;
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            document.querySelectorAll('.test-question-card').forEach(c => c.classList.remove('current'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('current'));
+            el.classList.add('current');
+            const btn = document.querySelectorAll('.nav-btn')[index];
+            if (btn) btn.classList.add('current');
+            setTimeout(() => el.classList.remove('current'), 2000);
+        }
+    </script>
+</body>
+</html>

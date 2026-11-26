@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Руководство — PsychoVector</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="data:,">
+    <style>
+        .guide-container { max-width: 900px; margin: 32px auto; padding: 0 40px; }
+        .guide-card { background: var(--white); border-radius: var(--radius); padding: 40px; box-shadow: var(--shadow); margin-bottom: 24px; }
+        .guide-card h1 { color: var(--dark-green); font-size: 28px; margin-bottom: 16px; border-bottom: 2px solid var(--light-green); padding-bottom: 12px; }
+        .guide-card h2 { color: var(--dark-green); font-size: 22px; margin-top: 32px; margin-bottom: 16px; padding-left: 12px; border-left: 4px solid var(--medium-green); }
+        .guide-card h3 { color: var(--text-dark); font-size: 18px; margin-top: 24px; margin-bottom: 12px; }
+        .guide-card p, .guide-card li { font-size: 15px; line-height: 1.7; color: var(--text-dark); }
+        .guide-card ul, .guide-card ol { padding-left: 24px; margin-bottom: 16px; }
+        .guide-card li { margin-bottom: 8px; }
+        .guide-card strong { color: var(--dark-green); }
+        .guide-card .info-box { background: var(--lighter-green); border-left: 4px solid var(--medium-green); padding: 16px 20px; border-radius: 8px; margin: 16px 0; font-size: 14px; }
+        .guide-card .tip-box { background: #e3f2fd; border-left: 4px solid #1565c0; padding: 16px 20px; border-radius: 8px; margin: 16px 0; font-size: 14px; }
+        .guide-card table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+        .guide-card table th { background: var(--light-green); color: var(--dark-green); padding: 12px; text-align: left; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .guide-card table td { padding: 12px; border-bottom: 1px solid var(--border); font-size: 14px; }
+        .guide-card table tr:hover td { background: var(--lighter-green); }
+        .guide-nav { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; padding: 20px; background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); }
+        .guide-nav a { padding: 8px 16px; background: var(--lighter-green); color: var(--dark-green); border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.2s; }
+        .guide-nav a:hover { background: var(--light-green); }
+        .badge-vrr { display: inline-block; padding: 2px 8px; background: var(--light-green); color: var(--dark-green); border-radius: 4px; font-size: 12px; font-weight: 600; }
+        .badge-simple { display: inline-block; padding: 2px 8px; background: #fff3e0; color: #e65100; border-radius: 4px; font-size: 12px; font-weight: 600; }
+        .emoji-icon { font-size: 20px; margin-right: 8px; }
+        @media (max-width: 768px) {
+            .guide-container { padding: 0 16px; }
+            .guide-card { padding: 24px; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="nav-bar">
+        <div class="logo">PsychoVector</div>
+        <div class="nav-links">
+            <a href="guide.html" class="active">Руководство</a>
+        </div>
+        <button id="theme-toggle-btn" onclick="toggleTheme()" title="Переключить тему">🌙 Тёмная</button>
+        <button class="nav-logout" onclick="handleLogout()">Выйти</button>
+    </nav>
+
+    <div class="guide-container">
+        <!-- Быстрая навигация -->
+        <div class="guide-nav">
+            <a href="#about">📌 О системе</a>
+            <a href="#cabinet">Личный кабинет</a>
+            <a href="#create">Создание тестирования</a>
+            <a href="#send">🔗 Отправка ссылки</a>
+            <a href="#results">📊 Просмотр результатов</a>
+            <a href="#manage">Управление тестами</a>
+            <a href="#tips">Рекомендации</a>
+        </div>
+
+        <!-- О системе -->
+        <div class="guide-card" id="about">
+            <h1>Руководство по использованию PsychoVector</h1>
+            <p><strong>PsychoVector</strong> — это веб-платформа для проведения психологических тестирований. Она позволяет:</p>
+            <ul>
+                <li>Создавать собственные тесты или использовать стандартизированную методику <span class="badge-vrr">ВРР (Марковская И.М.)</span></li>
+                <li>Отправлять участникам ссылку для прохождения</li>
+                <li>Автоматически обрабатывать результаты и строить интерпретацию</li>
+            </ul>
+        </div>
+
+        <!-- Личный кабинет -->
+        <div class="guide-card" id="cabinet">
+            <h2>Личный кабинет</h2>
+            <p>В верхней панели доступны вкладки:</p>
+            <table>
+                <thead>
+                    <tr><th>Вкладка</th><th>Назначение</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><strong>Личный кабинет</strong></td><td>Профиль, обзор тестов</td></tr>
+                    <tr><td><strong>Создать тестирование</strong></td><td>Создание нового теста</td></tr>
+                    <tr><td><strong>Созданные тестирования</strong></td><td>Список всех ваших тестов</td></tr>
+                    <tr><td><strong>Результаты</strong></td><td>Ответы участников</td></tr>
+                    <tr><td><strong>Руководство</strong></td><td>Эта страница со справкой</td></tr>
+                </tbody>
+            </table>
+
+            <h3>Редактирование профиля</h3>
+            <ol>
+                <li>Нажмите <strong>«Редактировать профиль»</strong> в карточке профиля.</li>
+                <li>Измените ФИО, дату рождения, образование, квалификацию.</li>
+                <li>Нажмите <strong>«Сохранить»</strong>.</li>
+            </ol>
+        </div>
+
+        <!-- Создание тестирования -->
+        <div class="guide-card" id="create">
+            <h2>Создание тестирования</h2>
+            <p>Перейдите во вкладку <strong>«Создать тестирование»</strong>. Выберите тип:</p>
+
+            <h3><span class="emoji-icon">✏️</span>Свой тест</h3>
+            <p>Подходит для авторских методик, опросников, шкал.</p>
+            <ol>
+                <li>Заполните <strong>Название *</strong> (обязательно), <strong>Описание</strong> и <strong>Методику</strong>.</li>
+                <li>Выберите режим добавления вопросов:
+                    <ul>
+                        <li><span class="badge-vrr">🎨 Карточки</span> — визуально, как в ВРР (5 вариантов с баллами 1–5)</li>
+                        <li><span class="badge-simple">📝 Простой</span> — компактные поля «Текст + Балл»</li>
+                    </ul>
+                </li>
+                <li>Нажмите <strong>«+ Добавить вопрос»</strong>.</li>
+                <li>В каждом вопросе:
+                    <ul>
+                        <li>Введите текст вопроса</li>
+                        <li>Заполните варианты ответов и их баллы</li>
+                        <li>При необходимости добавляйте/удаляйте варианты (минимум 2)</li>
+                    </ul>
+                </li>
+                <li>Нажмите <strong>«✓ Создать тестирование»</strong>.</li>
+            </ol>
+
+            <h3><span class="emoji-icon">🧠</span>ВРР (Марковская)</h3>
+            <p>Стандартизированная методика «Взаимодействие родитель – ребёнок», 60 вопросов, 10 шкал.</p>
+            <ol>
+                <li>Выберите <strong>Кого оценивает испытуемый</strong>: Мать / Отец / Ребёнок.</li>
+                <li>Выберите <strong>Возраст ребёнка</strong>: Подросток (12–17) или Дошкольник/младший школьник (3–11).</li>
+                <li>Название формируется автоматически (например, «ВРР: Мать (подросток)»).</li>
+                <li>Система подгрузит <strong>60 вопросов</strong> с вариантами 1–5 баллов.</li>
+                <li>При необходимости отредактируйте текст любого вопроса.</li>
+                <li>Нажмите <strong>«✓ Создать тестирование ВРР»</strong>.</li>
+            </ol>
+        </div>
+
+        <!-- Отправка ссылки -->
+        <div class="guide-card" id="send">
+            <h2>🔗 Отправка ссылки участникам</h2>
+            <ol>
+                <li>Перейдите в <strong>«Созданные тестирования»</strong>.</li>
+                <li>Найдите нужный тест. Рядом с названием ВРР-тестов будет бейдж <span class="badge-vrr">ВРР</span>.</li>
+                <li>Нажмите кнопку <strong>🔗</strong> — ссылка скопируется в буфер обмена.
+                <li>Отправьте ссылку участнику.</li>
+            </ol>
+        </div>
+
+        <!-- Просмотр результатов -->
+        <div class="guide-card" id="results">
+            <h2>📊 Просмотр результатов</h2>
+
+            <h3>Обычные тесты</h3>
+            <p>Во вкладке <strong>«Результаты»</strong> вы увидите карточку с:</p>
+            <ul>
+                <li>Имя и email участника, дата прохождения</li>
+                <li>Название теста</li>
+                <li>Баллы: <code>X из Y (Z%)</code></li>
+                <li>Уровень: 🟢 Низкий / 🟡 Средний / 🔴 Высокий</li>
+            </ul>
+
+            <h3>Результаты ВРР</h3>
+            <p>Карточка ВРР имеет кнопку <strong>«📊 Подробная статистика ВРР →»</strong>. При нажатии открывается отдельная страница со:</p>
+            <ul>
+                <li>ФИО участника, email, дата и время</li>
+                <li>Цель оценки (Мать/Отец/Ребёнок)</li>
+                <li>Форма (подросток/дошкольник)</li>
+                <li><strong>Радарная диаграмма</strong> — профиль по 10 шкалам в перцентилях</li>
+                <li><strong>Столбчатая диаграмма</strong> — сырые баллы по каждой шкале</li>
+                <li>Список всех 10 шкал с интерпретацией уровня</li>
+            </ul>
+
+            <h3>Цветовая индикация уровня</h3>
+            <table>
+                <thead>
+                    <tr><th>Перцентиль</th><th>Цвет</th><th>Интерпретация</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>≤ 25</td><td>🟢 Зелёный</td><td>Низкий уровень</td></tr>
+                    <tr><td>26–75</td><td>🟡 Оранжевый</td><td>Средний уровень</td></tr>
+                    <tr><td>> 75</td><td>🔴 Красный</td><td>Высокий уровень</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Управление тестами -->
+        <div class="guide-card" id="manage">
+            <h2>Управление тестами</h2>
+            <p>В <strong>«Созданных тестированиях»</strong> доступны действия:</p>
+            <table>
+                <thead>
+                    <tr><th>Кнопка</th><th>Действие</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>🔗</td><td>Скопировать ссылку</td></tr>
+                    <tr><td>⏸ / ▶</td><td>Перевести в черновик / активировать</td></tr>
+                    <tr><td>🗑</td><td>Удалить тест и все его результаты</td></tr>
+                </tbody>
+            </table>
+
+            <h3>Фильтры</h3>
+            <ul>
+                <li>Поиск по названию</li>
+                <li>Фильтр по статусу: Все / Активные / Черновики</li>
+            </ul>
+
+            <h3>Статистика сверху</h3>
+            <ul>
+                <li>Всего тестов</li>
+                <li>Активных</li>
+                <li>Всего участников (суммарно)</li>
+            </ul>
+        </div>
+
+        <!-- Рекомендации -->
+        <div class="guide-card" id="tips">
+            <h2>Рекомендации по работе</h2>
+            <ul>
+                <li><strong>Перед отправкой</strong> всегда проверяйте тест на себе (откройте ссылку в режиме инкогнито).</li>
+                <li><strong>Для групповой работы</strong> создавайте отдельные тесты под каждую пару «родитель–ребёнок» с указанием ФИО в названии.</li>
+                <li><strong>При интерпретации</strong> ВРР обращайте внимание не на отдельные шкалы, а на <strong>общий профиль</strong> и расхождения между зеркальными формами.</li>
+                <li><strong>Экспортируйте</strong> важные результаты: скриншоты страниц со статистикой или сохранение URL в закладки.</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        // Страница доступна всем, авторизация не требуется
+        document.addEventListener('DOMContentLoaded', function() {
+            // Плавная прокрутка по якорям
+            document.querySelectorAll('.guide-nav a').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href').substring(1);
+                    const target = document.getElementById(targetId);
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

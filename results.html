@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Результаты — PsychoVector</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="data:,">
+    <style>
+        .vrr-detail-link, .detail-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: var(--lighter-green);
+            color: var(--dark-green);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            margin-top: 16px;
+            transition: all 0.2s;
+        }
+        .vrr-detail-link:hover, .detail-link:hover {
+            background: var(--light-green);
+            border-color: var(--dark-green);
+        }
+        .target-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            background: #e3f2fd;
+            color: #1565c0;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        /* ===== ПАНЕЛЬ ПОИСКА И СОРТИРОВКИ ===== */
+        .filter-panel {
+            background: var(--white);
+            border-radius: var(--radius);
+            padding: 20px 24px;
+            box-shadow: var(--shadow);
+            margin-bottom: 24px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+        }
+        .filter-panel .filter-title {
+            font-weight: 600;
+            color: var(--dark-green);
+            font-size: 14px;
+            margin-right: 8px;
+        }
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+            position: relative;
+        }
+        .search-box input {
+            width: 100%;
+            padding: 10px 14px 10px 36px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            background: var(--lighter-green);
+            outline: none;
+            font-family: inherit;
+            box-sizing: border-box;
+            transition: all 0.2s;
+        }
+        .search-box input:focus {
+            border-color: var(--medium-green);
+            background: var(--white);
+        }
+        .search-box .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 14px;
+            pointer-events: none;
+        }
+        .sort-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .sort-box label {
+            font-size: 13px;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+        .sort-box select {
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            background: var(--lighter-green);
+            outline: none;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .sort-box select:focus {
+            border-color: var(--medium-green);
+            background: var(--white);
+        }
+        .results-count {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-left: auto;
+            white-space: nowrap;
+        }
+        .results-count strong {
+            color: var(--dark-green);
+        }
+
+        @media (max-width: 768px) {
+            .filter-panel { flex-direction: column; align-items: stretch; }
+            .results-count { margin-left: 0; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <div style="padding:16px 40px;font-size:14px;color:var(--text-muted);" id="top-role-label">Личный кабинет</div>
+
+    <nav class="nav-bar">
+        <div class="logo">PsychoVector</div>
+        <div class="nav-links">
+            <a href="dashboard.html">Личный кабинет</a>
+            <a href="create-test.html" id="nav-create-test">Создать тестирование</a>
+            <a href="my-tests.html" id="nav-my-tests">Созданные тестирования</a>
+            <a href="results.html" class="active">Результаты</a>
+        </div>
+        <button id="theme-toggle-btn" onclick="toggleTheme()" title="Переключить тему">🌙 Тёмная</button>
+        <button class="nav-logout" onclick="handleLogout()">Выйти</button>
+    </nav>
+
+    <div class="dashboard-header"><h1 id="results-page-title">Результаты пользователей</h1></div>
+
+    <!-- ПАНЕЛЬ ПОИСКА И СОРТИРОВКИ -->
+    <div class="filter-panel" id="filter-panel" style="max-width:1200px;margin:0 auto 24px;padding:0 40px;display:none;">
+        <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="search-input" placeholder="Поиск по имени, email или названию теста..." oninput="applyFilters()">
+        </div>
+        <div class="sort-box">
+            <label for="sort-select">Сортировка:</label>
+            <select id="sort-select" onchange="applyFilters()">
+                <option value="date-desc">📅 Сначала новые</option>
+                <option value="date-asc">📅 Сначала старые</option>
+                <option value="name-az">👤 По имени (А → Я)</option>
+                <option value="name-za">👤 По имени (Я → А)</option>
+                <option value="test-az">📋 По тесту (А → Я)</option>
+                <option value="score-desc">📊 По баллам (↓)</option>
+                <option value="score-asc">📊 По баллам (↑)</option>
+            </select>
+        </div>
+        <div class="results-count" id="results-count"></div>
+    </div>
+
+    <div class="results-page-grid" id="results-container" style="max-width:1200px;margin:0 auto;padding:0 40px;"></div>
+
+    <script src="js/app.js"></script>
+    <script>
+        let allResults = [];
+        let currentUser = null;
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            currentUser = requireAuth();
+            if (!currentUser) return;
+
+            document.body.dataset.role = currentUser.role;
+
+            const topLabel = document.getElementById('top-role-label');
+            if (topLabel) {
+                topLabel.textContent = currentUser.role === 'psychologist' 
+                    ? 'Личный кабинет психолога' 
+                    : 'Личный кабинет пользователя';
+            }
+
+            if (currentUser.role !== 'psychologist' && currentUser.role !== 'admin') {
+                const navCreate = document.getElementById('nav-create-test');
+                const navMyTests = document.getElementById('nav-my-tests');
+                if (navCreate) navCreate.style.display = 'none';
+                if (navMyTests) navMyTests.style.display = 'none';
+            }
+
+            const pageTitle = document.getElementById('results-page-title');
+            if (pageTitle) {
+                pageTitle.textContent = (currentUser.role === 'psychologist' || currentUser.role === 'admin') 
+                    ? 'Результаты пользователей' 
+                    : 'Мои результаты';
+            }
+
+            // Показываем панель поиска только для психологов и админов
+            if (currentUser.role === 'psychologist' || currentUser.role === 'admin') {
+                document.getElementById('filter-panel').style.display = 'flex';
+                await loadResults();
+            } else {
+                await loadUserResults(currentUser);
+            }
+        });
+
+        async function loadResults() {
+            const results = await Storage.getResults();
+            const tests = await Storage.getTests();
+            const myTestIds = tests.filter(t => t.createdBy === currentUser.id).map(t => t.id);
+            allResults = results.filter(r => myTestIds.includes(r.testId));
+            applyFilters();
+        }
+
+        async function loadUserResults(user) {
+            const results = await Storage.getResults();
+            allResults = results.filter(r => r.userId === user.id);
+            applyFilters();
+        }
+
+        // ===== ФИЛЬТРАЦИЯ И СОРТИРОВКА =====
+        function applyFilters() {
+            const searchInput = document.getElementById('search-input');
+            const sortSelect = document.getElementById('sort-select');
+            const search = searchInput ? searchInput.value.toLowerCase().trim() : '';
+            const sortBy = sortSelect ? sortSelect.value : 'date-desc';
+
+            // 1. Фильтрация по поисковому запросу
+            let filtered = allResults.filter(r => {
+                if (!search) return true;
+                const name = (r.userName || '').toLowerCase();
+                const email = (r.userEmail || '').toLowerCase();
+                const testTitle = (r.testTitle || '').toLowerCase();
+                return name.includes(search) || email.includes(search) || testTitle.includes(search);
+            });
+
+            // 2. Сортировка
+            filtered.sort((a, b) => {
+                const dateA = new Date(a.completedAt || 0).getTime();
+                const dateB = new Date(b.completedAt || 0).getTime();
+                const nameA = (a.userName || '').toLowerCase();
+                const nameB = (b.userName || '').toLowerCase();
+                const testA = (a.testTitle || '').toLowerCase();
+                const testB = (b.testTitle || '').toLowerCase();
+                const scoreA = a.score || 0;
+                const scoreB = b.score || 0;
+
+                switch (sortBy) {
+                    case 'date-desc': return dateB - dateA;
+                    case 'date-asc': return dateA - dateB;
+                    case 'name-az': return nameA.localeCompare(nameB, 'ru');
+                    case 'name-za': return nameB.localeCompare(nameA, 'ru');
+                    case 'test-az': return testA.localeCompare(testB, 'ru');
+                    case 'score-desc': return scoreB - scoreA;
+                    case 'score-asc': return scoreA - scoreB;
+                    default: return dateB - dateA;
+                }
+            });
+
+            // 3. Обновление счётчика
+            const countEl = document.getElementById('results-count');
+            if (countEl) {
+                countEl.innerHTML = `Найдено: <strong>${filtered.length}</strong> из ${allResults.length}`;
+            }
+
+            // 4. Отрисовка
+            const container = document.getElementById('results-container');
+            if (!container) return;
+
+            if (filtered.length === 0) {
+                const emptyMsg = search 
+                    ? `<p style="text-align:center;color:var(--text-muted);grid-column:1/-1;padding:40px;">По запросу «<strong>${search}</strong>» ничего не найдено</p>`
+                    : '<p style="text-align:center;color:var(--text-muted);grid-column:1/-1;padding:40px;">Пока нет результатов.</p>';
+                container.innerHTML = emptyMsg;
+                return;
+            }
+
+            container.innerHTML = filtered.map(r => renderResult(r)).join('');
+        }
+
+        function renderResult(r) {
+            const isVRR = r.methodData && r.methodData.type === 'vrr';
+            const date = new Date(r.completedAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+
+            if (isVRR) {
+                return renderVRRResult(r, date);
+            } else {
+                return renderSimpleResult(r, date);
+            }
+        }
+
+        function renderSimpleResult(r, date) {
+            const pct = r.maxScore > 0 ? Math.round((r.score / r.maxScore) * 100) : 0;
+            let interpClass = 'interpretation-low', interpText = 'Низкий уровень';
+            if (pct > 66) { interpClass = 'interpretation-high'; interpText = 'Высокий уровень'; }
+            else if (pct > 33) { interpClass = 'interpretation-medium'; interpText = 'Средний уровень'; }
+
+            const name = r.userName || 'Аноним';
+            const email = r.userEmail || 'Аноним';
+            const title = r.testTitle || '';
+            const avatar = name.charAt(0).toUpperCase();
+
+            return `<div class="result-user-card">
+                <div class="user-info">
+                    <div class="user-avatar">${avatar}</div>
+                    <div class="user-details">
+                        <h4>${name}</h4>
+                        <p>${email} · ${date}</p>
+                    </div>
+                </div>
+                <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">${title}</div>
+                <div class="result-score">
+                    <div>
+                        <div class="score-value">${r.score}</div>
+                        <div class="score-label">из ${r.maxScore} баллов (${pct}%)</div>
+                    </div>
+                </div>
+                <div class="result-interpretation ${interpClass}"><strong>${interpText}</strong></div>
+                <a href="results-detail.html?id=${r.id}" class="detail-link">
+                    📊 Подробная статистика →
+                </a>
+            </div>`;
+        }
+
+        function renderVRRResult(r, date) {
+            const target = r.methodData.target;
+            const name = r.userName || 'Аноним';
+            const email = r.userEmail || 'Аноним';
+            const title = r.testTitle || '';
+            const avatar = name.charAt(0).toUpperCase();
+
+            return `
+                <div class="result-user-card">
+                    <div class="user-info">
+                        <div class="user-avatar">${avatar}</div>
+                        <div class="user-details">
+                            <h4>${name}</h4>
+                            <p>${email} · ${date}</p>
+                        </div>
+                    </div>
+                    <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">${title}</div>
+                    ${target ? `<div class="target-badge">Оценка: ${target}</div>` : ''}
+                    <a href="results-vrr-detail.html?id=${r.id}" class="vrr-detail-link">
+                        📊 Подробная статистика ВРР →
+                    </a>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

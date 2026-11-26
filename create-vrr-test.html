@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Создание теста ВРР — PsychoVector</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .vrr-settings { background: var(--lighter-green); padding: 20px; border-radius: 12px; margin-bottom: 24px; }
+        .vrr-settings label { display: block; font-size: 13px; color: var(--text-dark); margin-bottom: 6px; font-weight: 600; }
+        .vrr-settings select { width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; background: var(--white); margin-bottom: 16px; }
+        .vrr-info { background: #e3f2fd; padding: 12px 16px; border-radius: 8px; font-size: 13px; color: #1565c0; margin-top: 16px; }
+        .question-block { background: var(--white); border: 1px solid var(--border); }
+        .vrr-answer-options { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 12px; }
+        .vrr-answer-option { display: flex; flex-direction: column; align-items: center; padding: 12px 8px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: all 0.2s; background: var(--lighter-green); }
+        .vrr-answer-option:hover { border-color: var(--medium-green); background: var(--light-green); }
+        .vrr-answer-option input[type="radio"] { margin-bottom: 6px; accent-color: var(--dark-green); }
+        .vrr-answer-option label { font-size: 11px; text-align: center; cursor: pointer; }
+        .auto-title { background: var(--light-green); padding: 10px 14px; border-radius: 8px; font-size: 14px; color: var(--dark-green); font-weight: 600; margin-bottom: 16px; }
+    </style>
+</head>
+<body>
+    <div style="padding:16px 40px;font-size:14px;color:var(--text-muted);">Личный кабинет психолога</div>
+
+    <nav class="nav-bar">
+        <div class="logo">PsychoVector</div>
+        <div class="nav-links">
+            <a href="dashboard.html">Личный кабинет</a>
+            <a href="create-test.html">Создать тестирование</a>
+            <a href="create-vrr-test.html" class="active">Создать ВРР</a>
+            <a href="my-tests.html">Созданные тестирования</a>
+            <a href="results.html">Результаты</a>
+            <a href="results-vrr.html">Результаты ВРР</a>
+        </div>
+        <button id="theme-toggle-btn" onclick="toggleTheme()" title="Переключить тему">🌙 Тёмная</button>
+        <button class="nav-logout" onclick="handleLogout()">Выйти</button>
+    </nav>
+
+    <div class="page-container">
+        <h1>Создание теста ВРР (Марковская)</h1>
+
+        <div class="form-card">
+            <h3>Настройки методики</h3>
+            <div class="vrr-settings">
+                <label>Кого оценивает испытуемый? *</label>
+                <select id="vrr-target" onchange="updateAutoTitle()">
+                    <option value="Мать">Мать</option>
+                    <option value="Отец">Отец</option>
+                    <option value="Ребёнок">Ребёнок</option>
+                </select>
+
+                <label>Возраст оцениваемого ребёнка *</label>
+                <select id="vrr-age" onchange="updateAutoTitle()">
+                    <option value="teen">Подросток (12–17 лет)</option>
+                    <option value="preschool">Дошкольник / младший школьник (3–11 лет)</option>
+                </select>
+
+                <div class="auto-title" id="auto-title-display">
+                    Название: ВРР: Мать (подросток)
+                </div>
+
+                <div class="vrr-info">
+                    ℹ️ Название теста формируется автоматически. При выборе формы автоматически загрузятся 60 вопросов методики ВРР. Вы сможете отредактировать или удалить любой вопрос.
+                </div>
+            </div>
+        </div>
+
+        <div class="form-card">
+            <h3>Вопросы (60)</h3>
+            <div id="vrr-questions-container"></div>
+        </div>
+
+        <div class="form-actions">
+            <button class="btn-primary" onclick="createVRRTest()">✓ Создать тестирование ВРР</button>
+            <button class="btn-secondary" onclick="window.location.href='dashboard.html'">Отмена</button>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script src="js/vrr-methodology.js"></script>
+    <script>
+        let vrrQuestions = [];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            requirePsychologist();
+            loadVRRQuestions();
+            updateAutoTitle();
+        });
+
+        function updateAutoTitle() {
+            const target = document.getElementById('vrr-target').value;
+            const age = document.getElementById('vrr-age').value;
+            const ageLabel = age === 'teen' ? 'подросток' : 'дошкольник';
+            const titleText = `ВРР: ${target} (${ageLabel})`;
+            document.getElementById('auto-title-display').textContent = 'Название: ' + titleText;
+        }
+
+        function loadVRRQuestions() {
+            const age = document.getElementById('vrr-age').value;
+            let questions;
+
+            if (age === 'teen') {
+                questions = VRR_METHOD.questions.teen;
+            } else {
+                questions = VRR_METHOD.questions.preschool;
+            }
+
+            vrrQuestions = questions.map((text, index) => ({
+                id: index + 1,
+                text: text,
+                options: [
+                    { text: 'Абсолютно неверно', score: 1 },
+                    { text: 'Скорее неверно', score: 2 },
+                    { text: 'Затрудняюсь ответить', score: 3 },
+                    { text: 'Скорее верно', score: 4 },
+                    { text: 'Абсолютно верно', score: 5 }
+                ]
+            }));
+
+            renderVRRQuestions();
+        }
+
+        function renderVRRQuestions() {
+            const container = document.getElementById('vrr-questions-container');
+            container.innerHTML = '';
+
+            vrrQuestions.forEach((q, index) => {
+                const card = document.createElement('div');
+                card.className = 'question-block';
+                card.dataset.qid = q.id;
+
+                const optionsHtml = q.options.map((opt, oi) => `
+                    <div class="vrr-answer-option">
+                        <input type="radio" name="q${index}_preview" id="q${index}_${oi}" value="${opt.score}">
+                        <label for="q${index}_${oi}">${opt.text}<br><strong>${opt.score}</strong></label>
+                    </div>
+                `).join('');
+
+                card.innerHTML = `
+                    <div class="question-header">
+                        <span class="question-number">Вопрос ${index + 1}</span>
+                        <button class="remove-question" onclick="removeVRRQuestion(${index})">✕</button>
+                    </div>
+                    <div class="form-group">
+                        <label>Текст вопроса</label>
+                        <input type="text" class="q-text-input" value="${q.text}" onchange="updateVRRQuestion(${index}, this.value)">
+                    </div>
+                    <div class="vrr-answer-options">
+                        ${optionsHtml}
+                    </div>
+                `;
+
+                container.appendChild(card);
+            });
+        }
+
+        function updateVRRQuestion(index, newText) {
+            vrrQuestions[index].text = newText;
+        }
+
+        function removeVRRQuestion(index) {
+            if (confirm('Удалить этот вопрос?')) {
+                vrrQuestions.splice(index, 1);
+                renderVRRQuestions();
+            }
+        }
+
+        document.getElementById('vrr-age').addEventListener('change', function() {
+            if (confirm('Смена формы сбросит все изменения в вопросах. Продолжить?')) {
+                loadVRRQuestions();
+            }
+        });
+
+        async function createVRRTest() {
+            const user = requirePsychologist();
+            if (!user) return;
+
+            const target = document.getElementById('vrr-target').value;
+            const age = document.getElementById('vrr-age').value;
+
+            const ageLabel = age === 'teen' ? 'подросток' : 'дошкольник';
+            const title = `ВРР: ${target} (${ageLabel})`;
+
+            if (vrrQuestions.length === 0) {
+                showNotification('Добавьте хотя бы один вопрос', 'error');
+                return;
+            }
+
+            const result = await Storage.createTest({
+                title: title,
+                description: 'Методика ВРР (Марковская И.М.) — Взаимодействие родитель – ребенок',
+                methodology: 'ВРР',
+                questions: vrrQuestions,
+                createdBy: user.id,
+                createdByName: user.fullName || user.login,
+                status: 'active',
+                participants: 0,
+                methodData: {
+                    type: 'vrr',
+                    target: target,
+                    form: age,
+                    processor: 'vrr'
+                }
+            });
+
+            if (result && result.success) {
+                showNotification('Тест ВРР успешно создан!', 'success');
+                setTimeout(() => { window.location.href = 'my-tests.html'; }, 1500);
+            } else {
+                showNotification('Ошибка создания теста', 'error');
+            }
+        }
+    </script>
+</body>
+</html>

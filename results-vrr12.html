@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Результаты ВРР — PsychoVector</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        .vrr-result-card { grid-column: 1 / -1; }
+        .vrr-profile { margin-top: 24px; padding-top: 24px; border-top: 2px solid var(--border); }
+        .vrr-profile h4 { color: var(--dark-green); margin-bottom: 20px; font-size: 18px; }
+        .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
+        .chart-card { background: var(--white); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); }
+        .chart-card h4 { color: var(--dark-green); margin-bottom: 16px; font-size: 16px; }
+        .chart-wrapper { position: relative; height: 350px; }
+        .vrr-scale { margin-bottom: 20px; padding: 16px; background: var(--lighter-green); border-radius: 8px; }
+        .vrr-scale-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px; }
+        .vrr-scale-name { font-weight: 600; color: var(--text-dark); font-size: 14px; }
+        .vrr-scale-score { font-size: 13px; color: var(--text-muted); }
+        .vrr-progress-bar { height: 8px; background: rgba(0,0,0,0.1); border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
+        .vrr-progress-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+        .vrr-level { font-size: 13px; font-weight: 600; }
+        .level-low { color: #2e7d32; }
+        .level-medium { color: #f57f17; }
+        .level-high { color: #c62828; }
+        .target-badge { display: inline-block; padding: 4px 10px; background: #e3f2fd; color: #1565c0; border-radius: 12px; font-size: 12px; font-weight: 600; margin-top: 8px; }
+        @media (max-width: 900px) { .charts-row { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div style="padding:16px 40px;font-size:14px;color:var(--text-muted);" id="top-role-label">Личный кабинет</div>
+
+    <nav class="nav-bar">
+        <div class="logo">PsychoVector</div>
+        <div class="nav-links">
+            <a href="dashboard.html">Личный кабинет</a>
+            <a href="create-test.html" id="nav-create-test">Создать тестирование</a>
+            <a href="create-vrr-test.html" id="nav-create-vrr">Создать ВРР</a>
+            <a href="my-tests.html" id="nav-my-tests">Созданные тестирования</a>
+            <a href="results.html" id="nav-results">Результаты</a>
+            <a href="results-vrr.html" class="active">Результаты ВРР</a>
+        </div>
+        <button id="theme-toggle-btn" onclick="toggleTheme()" title="Переключить тему">🌙 Тёмная</button>
+        <button class="nav-logout" onclick="handleLogout()">Выйти</button>
+    </nav>
+
+    <div class="dashboard-header"><h1 id="results-page-title">Результаты ВРР</h1></div>
+    <div class="results-page-grid" id="results-container"></div>
+
+    <script src="js/app.js"></script>
+    <script src="js/vrr-methodology.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            const user = requireAuth();
+            if (!user) return;
+
+            document.body.dataset.role = user.role;
+
+            const topLabel = document.getElementById('top-role-label');
+            if (topLabel) {
+                topLabel.textContent = user.role === 'psychologist' ? 'Личный кабинет психолога' : 'Личный кабинет пользователя';
+            }
+
+            if (user.role !== 'psychologist' && user.role !== 'admin') {
+                const navCreate = document.getElementById('nav-create-test');
+                const navCreateVrr = document.getElementById('nav-create-vrr');
+                const navMyTests = document.getElementById('nav-my-tests');
+                if (navCreate) navCreate.style.display = 'none';
+                if (navCreateVrr) navCreateVrr.style.display = 'none';
+                if (navMyTests) navMyTests.style.display = 'none';
+            }
+
+            const pageTitle = document.getElementById('results-page-title');
+            if (pageTitle) {
+                pageTitle.textContent = (user.role === 'psychologist' || user.role === 'admin') ? 'Результаты ВРР' : 'Мои результаты ВРР';
+            }
+
+            if (user.role === 'psychologist' || user.role === 'admin') {
+                await loadVRRResults();
+            } else {
+                await loadUserVRRResults(user);
+            }
+        });
+
+        async function loadVRRResults() {
+            const user = Storage.getCurrentUser();
+            const results = await Storage.getResults();
+            const tests = await Storage.getTests();
+            const myTestIds = tests.filter(t => t.createdBy === user.id).map(t => t.id);
+
+            // Показываем только результаты ВРР
+            const myResults = results.filter(r => 
+                myTestIds.includes(r.testId) && 
+                r.methodData && 
+                r.methodData.type === 'vrr'
+            );
+
+            const container = document.getElementById('results-container');
+            if (!container) return;
+
+            if (myResults.length === 0) {
+                container.innerHTML = '<p style="text-align:center;color:var(--text-muted);grid-column:1/-1;padding:40px;">Пока нет результатов ВРР.</p>';
+                return;
+            }
+
+            container.innerHTML = myResults.map(r => renderVRRResult(r)).join('');
+            setTimeout(() => buildVRRCharts(myResults), 100);
+        }
+
+        async function loadUserVRRResults(user) {
+            const results = await Storage.getResults();
+
+            // Показываем только результаты ВРР
+            const myResults = results.filter(r => 
+                r.userId === user.id && 
+                r.methodData && 
+                r.methodData.type === 'vrr'
+            );
+
+            const container = document.getElementById('results-container');
+            if (!container) return;
+
+            if (myResults.length === 0) {
+                container.innerHTML = '<p style="text-align:center;color:var(--text-muted);grid-column:1/-1;padding:40px;">Вы ещё не прошли ни одного теста ВРР.</p>';
+                return;
+            }
+
+            container.innerHTML = myResults.map(r => renderVRRResult(r)).join('');
+            setTimeout(() => buildVRRCharts(myResults), 100);
+        }
+
+        function renderVRRResult(r) {
+            const form = r.methodData.form;
+            const keys = VRR_METHOD.keys[form];
+            const target = r.methodData.target;
+            const date = new Date(r.completedAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+
+            const scalesHtml = Object.keys(keys).map(scaleNum => {
+                const scale = r.processedScales[scaleNum];
+                let color, levelClass;
+                if (scale.percentile <= 25) { color = '#4caf50'; levelClass = 'level-low'; }
+                else if (scale.percentile <= 75) { color = '#ff9800'; levelClass = 'level-medium'; }
+                else { color = '#f44336'; levelClass = 'level-high'; }
+
+                return `
+                    <div class="vrr-scale">
+                        <div class="vrr-scale-header">
+                            <div class="vrr-scale-name">${scaleNum}. ${scale.name}</div>
+                            <div class="vrr-scale-score">${scale.rawScore.toFixed(1)} бал. · ${scale.percentile} перц.</div>
+                        </div>
+                        <div class="vrr-progress-bar">
+                            <div class="vrr-progress-fill" style="width: ${scale.percentile}%; background: ${color};"></div>
+                        </div>
+                        <div class="vrr-level ${levelClass}">${scale.level} уровень</div>
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="result-user-card vrr-result-card" data-result-id="${r.id}">
+                    <div class="user-info">
+                        <div class="user-avatar">${r.userName.charAt(0).toUpperCase()}</div>
+                        <div class="user-details">
+                            <h4>${r.userName}</h4>
+                            <p>${r.userEmail || 'Аноним'} · ${date}</p>
+                        </div>
+                    </div>
+                    <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">${r.testTitle}</div>
+                    ${target ? `<div class="target-badge">Оценка: ${target}</div>` : ''}
+                    
+                    <div class="vrr-profile">
+                        <h4>📊 Профиль по шкалам ВРР</h4>
+                        
+                        <div class="charts-row">
+                            <div class="chart-card">
+                                <h4>Радарная диаграмма (процентили)</h4>
+                                <div class="chart-wrapper">
+                                    <canvas id="radar-chart-${r.id}"></canvas>
+                                </div>
+                            </div>
+                            <div class="chart-card">
+                                <h4>Баллы по шкалам</h4>
+                                <div class="chart-wrapper">
+                                    <canvas id="bar-chart-${r.id}"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        ${scalesHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        function buildVRRCharts(resultsList) {
+            resultsList.forEach(r => {
+                const form = r.methodData.form;
+                const keys = VRR_METHOD.keys[form];
+                const labels = [];
+                const percentilesData = [];
+                const scoresData = [];
+                const colors = [];
+
+                Object.keys(keys).forEach(scaleNum => {
+                    const scale = r.processedScales[scaleNum];
+                    labels.push(scale.name.split('–')[0].trim());
+                    percentilesData.push(scale.percentile);
+                    scoresData.push(scale.rawScore);
+
+                    if (scale.percentile <= 25) colors.push('#4caf50');
+                    else if (scale.percentile <= 75) colors.push('#ff9800');
+                    else colors.push('#f44336');
+                });
+
+                const radarCanvas = document.getElementById(`radar-chart-${r.id}`);
+                if (radarCanvas) {
+                    new Chart(radarCanvas, {
+                        type: 'radar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Перцентиль',
+                                data: percentilesData,
+                                backgroundColor: 'rgba(45, 90, 61, 0.2)',
+                                borderColor: '#2d5a3d',
+                                borderWidth: 2,
+                                pointBackgroundColor: colors,
+                                pointBorderColor: '#fff',
+                                pointRadius: 5,
+                                pointHoverRadius: 7
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                r: {
+                                    beginAtZero: true,
+                                    max: 100,
+                                    ticks: { stepSize: 25, font: { size: 10 } },
+                                    pointLabels: { font: { size: 11 } }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                const barCanvas = document.getElementById(`bar-chart-${r.id}`);
+                if (barCanvas) {
+                    new Chart(barCanvas, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Баллы',
+                                data: scoresData,
+                                backgroundColor: colors.map(c => c + 'CC'),
+                                borderColor: colors,
+                                borderWidth: 1,
+                                borderRadius: 4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: { beginAtZero: true, max: 25, ticks: { stepSize: 5 }, title: { display: true, text: 'Баллы' } },
+                                x: { ticks: { font: { size: 10 }, maxRotation: 45 } }
+                            }
+                        }
+                    });
+                }
+            });
+        }
+    </script>
+</body>
+</html>

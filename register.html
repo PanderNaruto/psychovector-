@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация — PsychoVector</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="data:,">
+    <style>
+        .register-container { max-width: 500px; margin: 60px auto; padding: 0 20px; }
+        .register-card { background: var(--white); border-radius: var(--radius); padding: 40px; box-shadow: var(--shadow); }
+        .register-card h2 { color: var(--dark-green); margin-bottom: 8px; text-align: center; }
+        .register-card .subtitle { text-align: center; color: var(--text-muted); font-size: 14px; margin-bottom: 32px; }
+        .step-indicator { display: flex; justify-content: center; gap: 8px; margin-bottom: 32px; }
+        .step-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--border); transition: background 0.3s; }
+        .step-dot.active { background: var(--dark-green); }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-size: 13px; color: var(--text-dark); margin-bottom: 8px; font-weight: 600; }
+        .form-group input, .form-group select { width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: var(--lighter-green); outline: none; transition: border-color 0.2s; box-sizing: border-box; font-family: inherit; }
+        .form-group input:focus, .form-group select:focus { border-color: var(--medium-green); background: var(--white); }
+        .btn-submit { width: 100%; padding: 14px; background: var(--dark-green); color: var(--white); border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.2s; margin-top: 8px; }
+        .btn-submit:hover { background: var(--medium-green); }
+        .btn-secondary { width: 100%; padding: 14px; background: var(--lighter-green); color: var(--dark-green); border: 1px solid var(--border); border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-top: 12px; font-family: inherit; }
+        .btn-secondary:hover { background: var(--light-green); }
+        .register-footer { text-align: center; margin-top: 24px; font-size: 14px; color: var(--text-muted); }
+        .register-footer a { color: var(--dark-green); text-decoration: none; font-weight: 600; }
+        .register-footer a:hover { text-decoration: underline; }
+        .checkbox-group { display: flex; align-items: center; gap: 10px; margin: 16px 0; }
+        .checkbox-group input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--dark-green); }
+        .checkbox-group label { font-size: 14px; color: var(--text-dark); cursor: pointer; }
+        .required::after { content: ' *'; color: #c62828; font-weight: 700; font-size: 14px; }
+        
+        /* Кнопка темы в правом верхнем углу */
+        .theme-toggle-top {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <!-- Кнопка переключения темы -->
+    <div class="theme-toggle-top">
+        <button id="theme-toggle-btn" onclick="toggleTheme()" title="Переключить тему">🌙 Тёмная</button>
+    </div>
+
+    <div class="register-container">
+        <div class="register-card">
+            <h2>Регистрация в PsychoVector</h2>
+            <p class="subtitle">Создайте аккаунт для работы с системой</p>
+
+            <div class="step-indicator">
+                <div class="step-dot active" id="step-dot-1"></div>
+                <div class="step-dot" id="step-dot-2"></div>
+                <div class="step-dot" id="step-dot-3"></div>
+            </div>
+
+            <!-- ШАГ 1: Имя и Почта -->
+            <div id="step-1">
+                <div class="form-group">
+                    <label for="user-name" class="required">Ваше имя</label>
+                    <input type="text" id="user-name" placeholder="Иван" autocomplete="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="verify-email" class="required">Ваша почта</label>
+                    <input type="email" id="verify-email" placeholder="example@mail.ru" autocomplete="email" required>
+                </div>
+                <button class="btn-submit" onclick="sendVerificationCode()">Получить код</button>
+            </div>
+
+            <!-- ШАГ 2: Код подтверждения -->
+            <div id="step-2" style="display:none;">
+                <div class="form-group">
+                    <label for="verify-code" class="required">Код подтверждения</label>
+                    <input type="text" id="verify-code" placeholder="Введите 6-значный код" maxlength="6" autocomplete="one-time-code">
+                </div>
+                <button class="btn-submit" onclick="verifyCode()">Подтвердить</button>
+                <button class="btn-secondary" onclick="goToStep(1)">Назад</button>
+            </div>
+
+            <!-- ШАГ 3: Логин, Пароль, Роль -->
+            <div id="step-3" style="display:none;">
+                <div class="form-group">
+                    <label for="reg-login" class="required">Логин</label>
+                    <input type="text" id="reg-login" placeholder="Ваш логин" autocomplete="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="reg-password" class="required">Пароль</label>
+                    <input type="password" id="reg-password" placeholder="Минимум 6 символов" autocomplete="new-password" required>
+                </div>
+                <div class="form-group">
+                    <label for="reg-password2" class="required">Повторите пароль</label>
+                    <input type="password" id="reg-password2" placeholder="Повторите пароль" autocomplete="new-password" required>
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="reg-is-psychologist" onchange="togglePsychologistFields()">
+                    <label for="reg-is-psychologist">Я психолог</label>
+                </div>
+
+                <div id="psychologist-fields" style="display:none;">
+                    <div class="form-group">
+                        <label for="reg-education" class="required">Образование</label>
+                        <input type="text" id="reg-education" placeholder="Высшее психологическое, МГУ им. Ломоносова" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-qualification" class="required">Квалификация</label>
+                        <input type="text" id="reg-qualification" placeholder="Психолог. Преподаватель психологии" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-birthdate" class="required">Дата рождения</label>
+                        <input type="date" id="reg-birthdate" required>
+                    </div>
+                </div>
+
+                <button class="btn-submit" onclick="handleRegisterWithAgeCheck()">Зарегистрироваться</button>
+                <button class="btn-secondary" onclick="goToStep(2)">Назад</button>
+            </div>
+        </div>
+
+        <div class="register-footer">
+            Уже есть аккаунт? <a href="login.html">Войти</a>
+        </div>
+        <div class="register-footer" style="margin-top: 12px;">
+            <a href="guide.html" style="color: var(--medium-green); font-weight: 600;">📖 Руководство</a>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        let verifiedEmail = '';
+        let userName = '';
+
+        function goToStep(step) {
+            document.getElementById('step-1').style.display = step === 1 ? 'block' : 'none';
+            document.getElementById('step-2').style.display = step === 2 ? 'block' : 'none';
+            document.getElementById('step-3').style.display = step === 3 ? 'block' : 'none';
+            for (let i = 1; i <= 3; i++) {
+                document.getElementById('step-dot-' + i).classList.toggle('active', i <= step);
+            }
+        }
+
+        async function sendVerificationCode() {
+            const name = document.getElementById('user-name').value.trim();
+            const email = document.getElementById('verify-email').value.trim();
+
+            if (!name) { showNotification('Введите имя', 'error'); return; }
+            if (!email) { showNotification('Введите email', 'error'); return; }
+
+            userName = name;
+            verifiedEmail = email;
+
+            const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+            // Пытаемся отправить код на сервер для отправки по email
+            try {
+                const response = await fetch('/api/send-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, name, code })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Письмо отправлено успешно
+                    localStorage.setItem('pv_verificationCode', JSON.stringify({
+                        code: code,
+                        email: email,
+                        expiresAt: Date.now() + 10 * 60 * 1000
+                    }));
+                    showNotification(`Код подтверждения отправлен на ${email}`, 'success');
+                    goToStep(2);
+                } else {
+                    // Ошибка отправки - показываем код локально
+                    throw new Error(data.error || 'Ошибка отправки');
+                }
+            } catch (error) {
+                // Fallback: если сервер недоступен, показываем код локально
+                console.warn('Не удалось отправить email, показываем код локально:', error);
+                localStorage.setItem('pv_verificationCode', JSON.stringify({
+                    code: code,
+                    email: email,
+                    expiresAt: Date.now() + 10 * 60 * 1000
+                }));
+                showNotification(`Код подтверждения: ${code} (email не отправлен)`, 'info');
+                goToStep(2);
+            }
+        }
+
+        function verifyCode() {
+            const enteredCode = document.getElementById('verify-code').value.trim();
+            if (!enteredCode) return showNotification('Введите код', 'error');
+
+            let codeData;
+            try { codeData = JSON.parse(localStorage.getItem('pv_verificationCode')); } catch (e) {}
+
+            if (!codeData) return showNotification('Код не найден. Запросите новый.', 'error');
+            if (Date.now() > codeData.expiresAt) return showNotification('Код истёк. Запросите новый.', 'error');
+            if (codeData.code !== enteredCode || codeData.email !== verifiedEmail) return showNotification('Неверный код или почта.', 'error');
+
+            document.getElementById('reg-login').value = userName;
+            goToStep(3);
+            showNotification('Почта подтверждена!', 'success');
+            setTimeout(() => document.getElementById('reg-login')?.focus(), 100);
+        }
+
+        function togglePsychologistFields() {
+            const isPsychologist = document.getElementById('reg-is-psychologist').checked;
+            document.getElementById('psychologist-fields').style.display = isPsychologist ? 'block' : 'none';
+        }
+
+        function isAtLeast18YearsOld(birthDateString) {
+            if (!birthDateString) return false;
+            const birthDate = new Date(birthDateString);
+            const today = new Date();
+            if (birthDate > today) return false;
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+            return age >= 18;
+        }
+
+        function getAge(birthDateString) {
+            const birthDate = new Date(birthDateString);
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+            return age;
+        }
+
+        function handleRegisterWithAgeCheck() {
+            const isPsychologist = document.getElementById('reg-is-psychologist').checked;
+            
+            if (isPsychologist) {
+                const birthDateInput = document.getElementById('reg-birthdate');
+                const birthDateValue = birthDateInput ? birthDateInput.value : '';
+                
+                if (!birthDateValue) {
+                    showNotification('Для регистрации психолога необходимо указать дату рождения', 'error');
+                    if (birthDateInput) birthDateInput.focus();
+                    return;
+                }
+                
+                if (!isAtLeast18YearsOld(birthDateValue)) {
+                    const age = getAge(birthDateValue);
+                    if (age < 0) {
+                        showNotification('Дата рождения не может быть в будущем', 'error');
+                    } else {
+                        showNotification(`Для регистрации психолога необходимо быть старше 18 лет. Ваш возраст: ${age} лет`, 'error');
+                    }
+                    if (birthDateInput) birthDateInput.focus();
+                    return;
+                }
+            }
+            
+            handleRegister();
+        }
+
+        async function handleRegister() {
+            const login = document.getElementById('reg-login').value.trim();
+            const password = document.getElementById('reg-password').value;
+            const password2 = document.getElementById('reg-password2').value;
+            const isPsychologist = document.getElementById('reg-is-psychologist').checked;
+
+            if (!login) { showNotification('Введите логин', 'error'); return; }
+            if (!password) { showNotification('Введите пароль', 'error'); return; }
+            if (password !== password2) { showNotification('Пароли не совпадают', 'error'); return; }
+            if (password.length < 6) { showNotification('Пароль должен содержать минимум 6 символов', 'error'); return; }
+
+            const education = isPsychologist ? document.getElementById('reg-education').value.trim() : '';
+            const qualification = isPsychologist ? document.getElementById('reg-qualification').value.trim() : '';
+            const birthDate = isPsychologist ? document.getElementById('reg-birthdate').value : '';
+
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: verifiedEmail,
+                        password: password,
+                        role: isPsychologist ? 'psychologist' : 'user',
+                        fullName: userName,
+                        login: login,
+                        education: education,
+                        qualification: qualification,
+                        birthDate: birthDate
+                    })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    showNotification('Регистрация успешна! Войдите в систему.', 'success');
+                    setTimeout(() => { window.location.href = 'login.html'; }, 1500);
+                } else {
+                    showNotification(data.error || 'Ошибка регистрации', 'error');
+                }
+            } catch (error) {
+                showNotification('Ошибка соединения с сервером', 'error');
+            }
+        }
+    </script>
+</body>
+</html>

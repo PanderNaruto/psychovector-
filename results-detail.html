@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Подробная статистика — PsychoVector</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="data:,">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        .detail-container { max-width: 1200px; margin: 32px auto; padding: 0 40px; }
+        .back-link { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; background: var(--lighter-green); color: var(--dark-green); border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none; margin-bottom: 24px; transition: all 0.2s; }
+        .back-link:hover { background: var(--light-green); border-color: var(--dark-green); }
+        .detail-header { background: var(--white); border-radius: var(--radius); padding: 32px; box-shadow: var(--shadow); margin-bottom: 24px; }
+        .detail-header h1 { font-size: 28px; color: var(--dark-green); margin-bottom: 16px; }
+        .detail-meta { display: flex; gap: 24px; flex-wrap: wrap; font-size: 14px; color: var(--text-muted); }
+        .detail-meta strong { color: var(--text-dark); }
+        .summary-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+        .summary-card { background: var(--white); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); text-align: center; }
+        .summary-card .sum-value { font-size: 32px; font-weight: 700; color: var(--dark-green); }
+        .summary-card .sum-label { font-size: 13px; color: var(--text-muted); margin-top: 8px; }
+        .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
+        .chart-card { background: var(--white); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); }
+        .chart-card h3 { color: var(--dark-green); margin-bottom: 16px; font-size: 18px; }
+        .chart-wrapper { position: relative; height: 400px; }
+        .questions-section { background: var(--white); border-radius: var(--radius); padding: 32px; box-shadow: var(--shadow); }
+        .questions-section h3 { color: var(--dark-green); margin-bottom: 24px; font-size: 18px; }
+        .q-result { margin-bottom: 20px; padding: 20px; background: var(--lighter-green); border-radius: 12px; }
+        .q-result-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; gap: 12px; flex-wrap: wrap; }
+        .q-result-text { font-weight: 600; color: var(--text-dark); font-size: 15px; flex: 1; }
+        .q-result-score { font-size: 14px; color: var(--text-muted); white-space: nowrap; }
+        .q-result-answer { font-size: 14px; color: var(--dark-green); margin-bottom: 10px; font-weight: 600; }
+        .q-progress-bar { height: 10px; background: rgba(0,0,0,0.1); border-radius: 5px; overflow: hidden; }
+        .q-progress-fill { height: 100%; border-radius: 5px; transition: width 0.6s ease; }
+        .error-message { text-align: center; padding: 60px 20px; color: var(--text-muted); background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); }
+        @media (max-width: 900px) {
+            .charts-row { grid-template-columns: 1fr; }
+            .summary-row { grid-template-columns: 1fr 1fr; }
+            .detail-container { padding: 0 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div style="padding:16px 40px;font-size:14px;color:var(--text-muted);" id="top-role-label">Подробная статистика</div>
+
+    <nav class="nav-bar">
+        <div class="logo">PsychoVector</div>
+        <div class="nav-links">
+            <a href="dashboard.html">Личный кабинет</a>
+            <a href="create-test.html" id="nav-create-test">Создать тестирование</a>
+            <a href="my-tests.html" id="nav-my-tests">Созданные тестирования</a>
+            <a href="results.html" id="nav-results">Результаты</a>
+        </div>
+        <button id="theme-toggle-btn" onclick="toggleTheme()" title="Переключить тему">🌙 Тёмная</button>
+        <button class="nav-logout" onclick="handleLogout()">Выйти</button>
+    </nav>
+
+    <div class="detail-container" id="detail-container">
+        <a href="results.html" class="back-link">← Назад к результатам</a>
+        <div id="detail-content"></div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            const user = requireAuth();
+            if (!user) return;
+
+            document.body.dataset.role = user.role;
+            const topLabel = document.getElementById('top-role-label');
+            if (topLabel) topLabel.textContent = user.role === 'psychologist' ? 'Личный кабинет психолога' : 'Личный кабинет пользователя';
+
+            const navCreate = document.getElementById('nav-create-test');
+            const navMyTests = document.getElementById('nav-my-tests');
+            const navResults = document.getElementById('nav-results');
+            if (navCreate) navCreate.style.display = 'none';
+            if (navMyTests) navMyTests.style.display = 'none';
+            if (navResults) navResults.style.display = 'none';
+
+            if (user.role === 'psychologist' || user.role === 'admin') {
+                if (navCreate) navCreate.style.display = 'inline-block';
+                if (navMyTests) navMyTests.style.display = 'inline-block';
+                if (navResults) navResults.style.display = 'inline-block';
+            } else if (user.role === 'user') {
+                if (navResults) navResults.style.display = 'inline-block';
+            }
+
+            const params = new URLSearchParams(window.location.search);
+            const resultId = params.get('id');
+
+            if (!resultId) {
+                document.getElementById('detail-content').innerHTML = '<div class="error-message"><h3>Результат не найден</h3><p>Не указан ID результата в URL</p></div>';
+                return;
+            }
+
+            const results = await Storage.getResults();
+            const result = results.find(r => r.id === resultId);
+
+            if (!result) {
+                document.getElementById('detail-content').innerHTML = '<div class="error-message"><h3>Результат не найден</h3></div>';
+                return;
+            }
+
+            // Если это ВРР, перенаправляем на правильную страницу
+            if (result.methodData && result.methodData.type === 'vrr') {
+                window.location.href = `results-vrr-detail.html?id=${resultId}`;
+                return;
+            }
+
+            const tests = await Storage.getTests();
+            const test = tests.find(t => t.id === result.testId);
+
+            if (!test) {
+                document.getElementById('detail-content').innerHTML = '<div class="error-message"><h3>Тест не найден</h3></div>';
+                return;
+            }
+
+            renderDetail(result, test);
+            setTimeout(() => buildCharts(result, test), 100);
+        });
+
+        function renderDetail(r, test) {
+            const date = new Date(r.completedAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            const pct = r.maxScore > 0 ? Math.round((r.score / r.maxScore) * 100) : 0;
+            let levelText = 'Низкий уровень', levelColor = '#4caf50';
+            if (pct > 66) { levelText = 'Высокий уровень'; levelColor = '#f44336'; }
+            else if (pct > 33) { levelText = 'Средний уровень'; levelColor = '#ff9800'; }
+
+            let questionsHtml = '';
+            if (test.questions && test.questions.length > 0) {
+                questionsHtml = test.questions.map((q, index) => {
+                    const answerIndex = r.answers ? r.answers[index] : undefined;
+                    const selectedOpt = (answerIndex !== undefined && q.options && q.options[answerIndex]) ? q.options[answerIndex] : null;
+                    const earned = selectedOpt ? (selectedOpt.score || 0) : 0;
+                    const maxOpt = q.options ? Math.max(...q.options.map(o => o.score || 0)) : 0;
+                    
+                    const fillPct = maxOpt > 0 ? Math.round((earned / maxOpt) * 100) : 0;
+                    let fillColor = '#4caf50';
+                    if (fillPct > 66) fillColor = '#f44336';
+                    else if (fillPct > 33) fillColor = '#ff9800';
+
+                    const answerText = selectedOpt ? selectedOpt.text : 'Нет ответа';
+
+                    return `
+                        <div class="q-result">
+                            <div class="q-result-header">
+                                <div class="q-result-text">Вопрос ${index + 1}. ${q.text || ''}</div>
+                                <div class="q-result-score">${earned} из ${maxOpt}</div>
+                            </div>
+                            <div class="q-result-answer">Выбрано: ${answerText}</div>
+                            <div class="q-progress-bar">
+                                <div class="q-progress-fill" style="width: ${fillPct}%; background: ${fillColor};"></div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                questionsHtml = '<p style="color:var(--text-muted);">Вопросы не найдены.</p>';
+            }
+
+            document.getElementById('detail-content').innerHTML = `
+                <div class="detail-header">
+                    <h1>📊 ${test.title || ''}</h1>
+                    <div class="detail-meta">
+                        <div><strong>Участник:</strong> ${r.userName || 'Аноним'}</div>
+                        <div><strong>Email:</strong> ${r.userEmail || 'Аноним'}</div>
+                        <div><strong>Дата:</strong> ${date}</div>
+                        ${test.methodology ? `<div><strong>Методика:</strong> ${test.methodology}</div>` : ''}
+                    </div>
+                </div>
+
+                <div class="summary-row">
+                    <div class="summary-card">
+                        <div class="sum-value">${r.score}</div>
+                        <div class="sum-label">Всего баллов</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="sum-value">${pct}%</div>
+                        <div class="sum-label">От максимума</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="sum-value">${test.questions ? test.questions.length : 0}</div>
+                        <div class="sum-label">Вопросов</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="sum-value" style="color:${levelColor};">${levelText.split(' ')[0]}</div>
+                        <div class="sum-label">${levelText}</div>
+                    </div>
+                </div>
+
+                <div class="charts-row">
+                    <div class="chart-card">
+                        <h3>Профиль ответов (в % от максимума)</h3>
+                        <div class="chart-wrapper"><canvas id="radar-chart"></canvas></div>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Баллы по вопросам</h3>
+                        <div class="chart-wrapper"><canvas id="bar-chart"></canvas></div>
+                    </div>
+                </div>
+
+                <div class="questions-section">
+                    <h3>📋 Разбор по вопросам</h3>
+                    ${questionsHtml}
+                </div>
+            `;
+        }
+
+        function buildCharts(r, test) {
+            if (!test.questions || test.questions.length === 0) return;
+
+            const labels = [], percents = [], scores = [], colors = [];
+
+            test.questions.forEach((q, index) => {
+                const answerIndex = r.answers ? r.answers[index] : undefined;
+                const selectedOpt = (answerIndex !== undefined && q.options && q.options[answerIndex]) ? q.options[answerIndex] : null;
+                const earned = selectedOpt ? (selectedOpt.score || 0) : 0;
+                const maxOpt = q.options ? Math.max(...q.options.map(o => o.score || 0)) : 0;
+                const p = maxOpt > 0 ? Math.round((earned / maxOpt) * 100) : 0;
+
+                labels.push('В' + (index + 1));
+                percents.push(p);
+                scores.push(earned);
+
+                if (p <= 33) colors.push('#4caf50');
+                else if (p <= 66) colors.push('#ff9800');
+                else colors.push('#f44336');
+            });
+
+            const radarCanvas = document.getElementById('radar-chart');
+            if (radarCanvas) {
+                new Chart(radarCanvas, {
+                    type: 'radar',
+                    data: {
+                        labels: labels,
+                        datasets: [{ label: 'Процент', data: percents, backgroundColor: 'rgba(45, 90, 61, 0.2)', borderColor: '#2d5a3d', borderWidth: 2, pointBackgroundColor: colors, pointBorderColor: '#fff', pointRadius: 5 }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { r: { beginAtZero: true, max: 100, ticks: { stepSize: 25, font: { size: 10 } }, pointLabels: { font: { size: 11 } } } } }
+                });
+            }
+
+            const barCanvas = document.getElementById('bar-chart');
+            if (barCanvas) {
+                new Chart(barCanvas, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{ label: 'Баллы', data: scores, backgroundColor: colors.map(c => c + 'CC'), borderColor: colors, borderWidth: 1, borderRadius: 4 }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 }, title: { display: true, text: 'Баллы' } }, x: { ticks: { font: { size: 11 } } } } }
+                });
+            }
+        }
+    </script>
+</body>
+</html>

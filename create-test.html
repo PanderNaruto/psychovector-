@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Создание тестирования — PsychoVector</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="data:,">
+    <style>
+        /* ===== ЭКРАН ВЫБОРА ТИПА ===== */
+        .type-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 40px;
+        }
+        .type-card {
+            background: var(--white);
+            border-radius: var(--radius);
+            padding: 40px 32px;
+            box-shadow: var(--shadow);
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 3px solid transparent;
+            text-align: center;
+            min-height: 280px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .type-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(45, 90, 61, 0.15);
+            border-color: var(--medium-green);
+        }
+        .type-card .type-icon { font-size: 64px; margin-bottom: 20px; }
+        .type-card h3 { font-size: 22px; color: var(--dark-green); margin-bottom: 12px; }
+        .type-card p { font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+        .type-card.vrr-card { background: linear-gradient(135deg, var(--light-green) 0%, var(--white) 100%); }
+
+        /* ===== СЕКЦИИ СОЗДАНИЯ ===== */
+        .creation-section { display: none; animation: fadeIn 0.3s ease; }
+        .creation-section.active { display: block; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .back-to-types {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 10px 20px; background: var(--lighter-green);
+            color: var(--dark-green); border: 1px solid var(--border);
+            border-radius: 8px; font-size: 14px; cursor: pointer;
+            margin-bottom: 24px; transition: all 0.2s; font-family: inherit;
+        }
+        .back-to-types:hover { background: var(--light-green); border-color: var(--dark-green); }
+
+        /* ===== ПЕРЕКЛЮЧАТЕЛЬ РЕЖИМОВ ===== */
+        .mode-switcher {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            padding: 16px;
+            background: var(--lighter-green);
+            border-radius: 12px;
+        }
+        .mode-btn {
+            flex: 1;
+            padding: 12px 20px;
+            background: var(--white);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .mode-btn:hover { border-color: var(--medium-green); background: var(--light-green); }
+        .mode-btn.active { background: var(--dark-green); color: var(--white); border-color: var(--dark-green); }
+        .mode-btn .mode-icon { font-size: 20px; }
+
+        /* ===== СТИЛИ ДЛЯ ВРР ===== */
+        .vrr-settings { background: var(--lighter-green); padding: 24px; border-radius: 12px; margin-bottom: 24px; }
+        .vrr-settings label { display: block; font-size: 13px; color: var(--text-dark); margin-bottom: 6px; font-weight: 600; }
+        .vrr-settings select { width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; background: var(--white); margin-bottom: 16px; font-family: inherit; }
+        .auto-title { background: var(--light-green); padding: 12px 16px; border-radius: 8px; font-size: 15px; color: var(--dark-green); font-weight: 600; margin-bottom: 20px; border-left: 4px solid var(--dark-green); }
+
+        /* ===== СТИЛИ ДЛЯ КАРТОЧЕК ===== */
+        .custom-answer-options { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 12px; }
+        .custom-answer-option { display: flex; flex-direction: column; align-items: center; padding: 12px 8px; border: 2px solid var(--border); border-radius: 10px; background: var(--white); transition: all 0.2s; }
+        .custom-answer-option:hover { border-color: var(--medium-green); background: var(--lighter-green); }
+        .custom-answer-option input[type="radio"] { margin-bottom: 8px; accent-color: var(--dark-green); transform: scale(1.2); }
+        .custom-answer-option .option-text-input { width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; text-align: center; background: var(--lighter-green); outline: none; font-family: inherit; box-sizing: border-box; margin-bottom: 6px; }
+        .custom-answer-option .option-text-input:focus { border-color: var(--medium-green); background: var(--white); }
+        .custom-answer-option .option-score-input { width: 50px; padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; text-align: center; font-weight: 700; color: var(--dark-green); background: var(--light-green); outline: none; font-family: inherit; }
+        .custom-answer-option .option-score-input:focus { border-color: var(--medium-green); }
+        .custom-answer-option label { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+        .btn-add-answer { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 10px; border: 2px dashed var(--border); border-radius: 8px; background: transparent; font-size: 13px; color: var(--text-muted); cursor: pointer; margin-top: 12px; transition: all 0.2s; font-family: inherit; }
+        .btn-add-answer:hover { border-color: var(--dark-green); color: var(--dark-green); }
+        .btn-remove-answer { background: none; border: none; color: #c0392b; cursor: pointer; font-size: 14px; padding: 2px 6px; border-radius: 4px; transition: all 0.2s; }
+        .btn-remove-answer:hover { background: #ffebee; }
+
+        /* ===== СТИЛИ ДЛЯ ПРОСТОГО РЕЖИМА ===== */
+        .simple-answer-option { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; padding: 8px; background: var(--lighter-green); border-radius: 6px; }
+        .simple-answer-option input[type="text"] { flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: var(--white); outline: none; font-family: inherit; }
+        .simple-answer-option input[type="text"]:focus { border-color: var(--medium-green); }
+        .simple-answer-option input[type="number"] { width: 70px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: var(--white); outline: none; font-family: inherit; }
+        .simple-answer-option input[type="number"]:focus { border-color: var(--medium-green); }
+        .simple-answer-option .btn-remove-answer { font-size: 16px; }
+
+        .question-block { background: var(--white); border: 1px solid var(--border); }
+        .vrr-answer-options { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+        .vrr-answer-option { display: flex; flex-direction: column; align-items: center; padding: 12px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--lighter-green); cursor: pointer; transition: all 0.2s; }
+        .vrr-answer-option:hover { border-color: var(--medium-green); }
+        .vrr-answer-option input[type="radio"] { margin-bottom: 6px; accent-color: var(--dark-green); transform: scale(1.2); }
+        .vrr-answer-option label { font-size: 11px; text-align: center; cursor: pointer; line-height: 1.3; }
+        .vrr-answer-option label strong { display: block; font-size: 16px; margin-top: 4px; color: var(--dark-green); }
+
+        @media (max-width: 768px) {
+            .type-selector { grid-template-columns: 1fr; padding: 0 20px; }
+            .custom-answer-options, .vrr-answer-options { grid-template-columns: 1fr; }
+            .mode-switcher { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div style="padding:16px 40px;font-size:14px;color:var(--text-muted);">Личный кабинет психолога</div>
+
+    <nav class="nav-bar">
+        <div class="logo">PsychoVector</div>
+        <div class="nav-links">
+            <a href="dashboard.html">Личный кабинет</a>
+            <a href="create-test.html" class="active">Создать тестирование</a>
+            <a href="my-tests.html">Созданные тестирования</a>
+            <a href="results.html">Результаты</a>
+        </div>
+        <button id="theme-toggle-btn" onclick="toggleTheme()" title="Переключить тему">🌙 Тёмная</button>
+        <button class="nav-logout" onclick="handleLogout()">Выйти</button>
+    </nav>
+
+    <div class="page-container">
+        <h1>Создание нового тестирования</h1>
+
+        <!-- ===== ЭКРАН ВЫБОРА ТИПА ===== -->
+        <div id="type-selector" class="type-selector">
+            <div class="type-card" onclick="selectTestType('custom')">
+                <div class="type-icon">✏️</div>
+                <h3>Свой тест</h3>
+                <p>Создайте тестирование с собственными вопросами и вариантами ответов. Подходит для любых методик.</p>
+            </div>
+            <div class="type-card vrr-card" onclick="selectTestType('vrr')">
+                <div class="type-icon">🧠</div>
+                <h3>ВРР (Марковская)</h3>
+                <p>Стандартизированная методика «Взаимодействие родитель – ребенок» с автоматической обработкой по 10 шкалам.</p>
+            </div>
+        </div>
+
+        <!-- ===== СЕКЦИЯ: СВОЙ ТЕСТ ===== -->
+        <div id="custom-test-section" class="creation-section">
+            <button class="back-to-types" onclick="showTypeSelector()">← Назад к выбору типа</button>
+
+            <div class="form-card">
+                <h3>Основная информация</h3>
+                <div class="form-group">
+                    <label>Название тестирования *</label>
+                    <input type="text" id="test-title" placeholder="Например: Шкала тревоги Бека">
+                </div>
+                <div class="form-group">
+                    <label>Описание (инструкция)</label>
+                    <textarea id="test-description" rows="3" placeholder="Краткое описание..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Методика</label>
+                    <input type="text" id="test-methodology" placeholder="BAI, PSS и т.д.">
+                </div>
+            </div>
+
+            <div class="mode-switcher">
+                <button class="mode-btn active" onclick="switchMode('cards')" id="mode-cards-btn">
+                    <span class="mode-icon">🎨</span> Карточки
+                </button>
+                <button class="mode-btn" onclick="switchMode('simple')" id="mode-simple-btn">
+                    <span class="mode-icon">📝</span> Обычный
+                </button>
+            </div>
+
+            <div class="form-card">
+                <h3>Вопросы (<span id="custom-questions-count">0</span>)</h3>
+                <div id="cards-questions-container"></div>
+                <div id="simple-questions-container" style="display:none;"></div>
+                <button class="btn-add-question" onclick="addQuestion()">+ Добавить вопрос</button>
+            </div>
+
+            <div class="form-actions">
+                <button class="btn-primary" onclick="createCustomTest()">✓ Создать тестирование</button>
+                <button class="btn-secondary" onclick="showTypeSelector()">Отмена</button>
+            </div>
+        </div>
+
+        <!-- ===== СЕКЦИЯ: ВРР ===== -->
+        <div id="vrr-test-section" class="creation-section">
+            <button class="back-to-types" onclick="showTypeSelector()">← Назад к выбору типа</button>
+
+            <div class="form-card vrr-settings">
+                <h3 style="margin-top:0;">Настройки методики ВРР</h3>
+
+                <!-- 1. Кто заполняет анкету -->
+                <div class="form-group">
+                    <label for="vrr-respondent" class="required">Кто заполняет опросник (испытуемый)? *</label>
+                    <select id="vrr-respondent" onchange="updateVRRFields(); updateAutoTitle();">
+                        <option value="mother">Мать</option>
+                        <option value="father">Отец</option>
+                        <option value="child">Ребёнок</option>
+                    </select>
+                </div>
+
+                <!-- 2. Кого оценивает ребёнок (виден ТОЛЬКО если испытуемый = Ребёнок) -->
+                <div class="form-group" id="vrr-child-target-group" style="display:none;">
+                    <label for="vrr-child-target" class="required">Кого оценивает ребёнок? *</label>
+                    <select id="vrr-child-target" onchange="updateAutoTitle();">
+                        <option value="mother">Мать</option>
+                        <option value="father">Отца</option>
+                        <option value="both">Обоих родителей</option>
+                    </select>
+                </div>
+
+                <!-- 3. Возраст ребёнка (виден ВСЕГДА, но подпись меняется) -->
+                <div class="form-group">
+                    <label for="vrr-child-age" class="required" id="vrr-age-label">Возраст ребёнка *</label>
+                    <select id="vrr-child-age" onchange="updateVRRFields(); updateAutoTitle(); loadVRRQuestions();">
+                        <option value="preschool">Дошкольник / младший школьник (3–11 лет)</option>
+                        <option value="teen">Подросток (12–17 лет)</option>
+                    </select>
+                </div>
+
+                <!-- Подсказка, которая всё объясняет -->
+                <div class="info-box" id="vrr-explain" style="margin-top:8px;"></div>
+            </div>
+
+            <div class="form-card">
+                <div class="auto-title" id="auto-title-display">Название: ВРР (автоматически)</div>
+                <h3>Вопросы методики (<span id="vrr-questions-count">0</span>)</h3>
+                <div id="vrr-questions-container"></div>
+            </div>
+
+            <div class="form-actions">
+                <button class="btn-primary" onclick="createVRRTest()">✓ Создать тестирование ВРР</button>
+                <button class="btn-secondary" onclick="showTypeSelector()">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script src="js/vrr-methodology.js"></script>
+    <script>
+        // ===== УПРАВЛЕНИЕ ЭКРАНАМИ =====
+        function showTypeSelector() {
+            document.getElementById('type-selector').style.display = 'grid';
+            document.getElementById('custom-test-section').classList.remove('active');
+            document.getElementById('vrr-test-section').classList.remove('active');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function selectTestType(type) {
+            document.getElementById('type-selector').style.display = 'none';
+            
+            if (type === 'custom') {
+                document.getElementById('custom-test-section').classList.add('active');
+                if (document.querySelectorAll('#cards-questions-container .question-block, #simple-questions-container .question-block').length === 0) {
+                    addQuestion();
+                }
+            } else if (type === 'vrr') {
+                document.getElementById('vrr-test-section').classList.add('active');
+                updateVRRFields();
+                loadVRRQuestions();
+                updateAutoTitle();
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // ===== ПЕРЕКЛЮЧАТЕЛЬ РЕЖИМОВ =====
+        let currentMode = 'cards';
+
+        function switchMode(mode) {
+            currentMode = mode;
+            document.getElementById('mode-cards-btn').classList.toggle('active', mode === 'cards');
+            document.getElementById('mode-simple-btn').classList.toggle('active', mode === 'simple');
+            document.getElementById('cards-questions-container').style.display = mode === 'cards' ? 'block' : 'none';
+            document.getElementById('simple-questions-container').style.display = mode === 'simple' ? 'block' : 'none';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // ===== ЛОГИКА СВОЕГО ТЕСТА =====
+        let customQuestions = [];
+        let customQuestionCounter = 0;
+
+        function addQuestion() {
+            customQuestionCounter++;
+            customQuestions.push({
+                id: customQuestionCounter,
+                text: '',
+                options: [
+                    { text: '', score: 1 }, { text: '', score: 2 }, { text: '', score: 3 },
+                    { text: '', score: 4 }, { text: '', score: 5 }
+                ]
+            });
+            renderQuestions();
+        }
+
+        function renderQuestions() {
+            if (currentMode === 'cards') renderCardsQuestions();
+            else renderSimpleQuestions();
+            document.getElementById('custom-questions-count').textContent = customQuestions.length;
+        }
+
+        function renderCardsQuestions() {
+            const container = document.getElementById('cards-questions-container');
+            container.innerHTML = '';
+            customQuestions.forEach((q, qIndex) => {
+                const optionsHtml = q.options.map((opt, oIndex) => `
+                    <div class="custom-answer-option">
+                        <input type="radio" name="q${qIndex}_preview" id="cq${qIndex}_${oIndex}" value="${opt.score}">
+                        <input type="text" class="option-text-input" value="${(opt.text || '').replace(/"/g, '&quot;')}" placeholder="Вариант" onchange="updateCustomOption(${qIndex}, ${oIndex}, 'text', this.value)">
+                        <input type="number" class="option-score-input" value="${opt.score}" min="0" onchange="updateCustomOption(${qIndex}, ${oIndex}, 'score', parseInt(this.value) || 0)">
+                        <label>Балл</label>
+                        ${q.options.length > 2 ? `<button class="btn-remove-answer" onclick="removeCustomOption(${qIndex}, ${oIndex})">✕</button>` : ''}
+                    </div>
+                `).join('');
+
+                const card = document.createElement('div');
+                card.className = 'question-block';
+                card.style.marginBottom = '16px';
+                card.style.padding = '20px';
+                card.style.borderRadius = '12px';
+                card.innerHTML = `
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                        <span style="font-weight:600;color:var(--dark-green);">Вопрос ${qIndex + 1}</span>
+                        <button class="remove-question" onclick="removeCustomQuestion(${qIndex})" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:18px;">✕</button>
+                    </div>
+                    <div class="form-group" style="margin-bottom:16px;">
+                        <input type="text" value="${(q.text || '').replace(/"/g, '&quot;')}" placeholder="Текст вопроса..." onchange="updateCustomQuestion(${qIndex}, this.value)" style="width:100%;padding:12px 16px;border:1px solid var(--border);border-radius:10px;font-size:14px;background:var(--lighter-green);outline:none;box-sizing:border-box;">
+                    </div>
+                    <div class="custom-answer-options">${optionsHtml}</div>
+                    <button class="btn-add-answer" onclick="addCustomOption(${qIndex})">+ Добавить вариант ответа</button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function renderSimpleQuestions() {
+            const container = document.getElementById('simple-questions-container');
+            container.innerHTML = '';
+            customQuestions.forEach((q, qIndex) => {
+                const optionsHtml = q.options.map((opt, oIndex) => `
+                    <div class="simple-answer-option">
+                        <input type="text" value="${(opt.text || '').replace(/"/g, '&quot;')}" placeholder="Вариант" onchange="updateCustomOption(${qIndex}, ${oIndex}, 'text', this.value)">
+                        <input type="number" value="${opt.score}" min="0" placeholder="Балл" onchange="updateCustomOption(${qIndex}, ${oIndex}, 'score', parseInt(this.value) || 0)">
+                        ${q.options.length > 2 ? `<button class="btn-remove-answer" onclick="removeCustomOption(${qIndex}, ${oIndex})">✕</button>` : ''}
+                    </div>
+                `).join('');
+
+                const card = document.createElement('div');
+                card.className = 'question-block';
+                card.style.marginBottom = '16px';
+                card.style.padding = '20px';
+                card.style.borderRadius = '12px';
+                card.innerHTML = `
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                        <span style="font-weight:600;color:var(--dark-green);">Вопрос ${qIndex + 1}</span>
+                        <button class="remove-question" onclick="removeCustomQuestion(${qIndex})" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:18px;">✕</button>
+                    </div>
+                    <div class="form-group" style="margin-bottom:16px;">
+                        <input type="text" value="${(q.text || '').replace(/"/g, '&quot;')}" placeholder="Текст вопроса..." onchange="updateCustomQuestion(${qIndex}, this.value)" style="width:100%;padding:12px 16px;border:1px solid var(--border);border-radius:10px;font-size:14px;background:var(--lighter-green);outline:none;box-sizing:border-box;">
+                    </div>
+                    ${optionsHtml}
+                    <button class="btn-add-answer" onclick="addCustomOption(${qIndex})" style="margin-top:12px;padding:8px;font-size:13px;">+ Добавить вариант</button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function updateCustomQuestion(index, newText) { customQuestions[index].text = newText; }
+        function updateCustomOption(qIndex, oIndex, field, value) { customQuestions[qIndex].options[oIndex][field] = value; }
+        function removeCustomQuestion(index) { if (confirm('Удалить вопрос?')) { customQuestions.splice(index, 1); renderQuestions(); } }
+        function addCustomOption(qIndex) {
+            const maxScore = Math.max(...customQuestions[qIndex].options.map(o => o.score));
+            customQuestions[qIndex].options.push({ text: '', score: maxScore + 1 });
+            renderQuestions();
+        }
+        function removeCustomOption(qIndex, oIndex) {
+            if (confirm('Удалить вариант?')) { customQuestions[qIndex].options.splice(oIndex, 1); renderQuestions(); }
+        }
+
+        async function createCustomTest() {
+            const user = requirePsychologist();
+            if (!user) return;
+            const title = document.getElementById('test-title').value.trim();
+            if (!title) { showNotification('Укажите название тестирования', 'error'); return; }
+            if (customQuestions.length === 0) { showNotification('Добавьте хотя бы один вопрос', 'error'); return; }
+
+            const result = await Storage.createTest({
+                title, description: document.getElementById('test-description').value.trim(),
+                methodology: document.getElementById('test-methodology').value.trim() || 'Своя методика',
+                questions: customQuestions, createdBy: user.id, createdByName: user.fullName || user.login,
+                status: 'active', participants: 0
+            });
+
+            if (result && result.success) {
+                showNotification('Тестирование успешно создано!', 'success');
+                setTimeout(() => { window.location.href = 'my-tests.html'; }, 1500);
+            } else {
+                showNotification('Ошибка создания теста', 'error');
+            }
+        }
+
+        // ===== ЛОГИКА ВРР =====
+        let vrrQuestions = [];
+
+        function updateAutoTitle() {
+            const respondent = document.getElementById('vrr-respondent').value;
+            const age = document.getElementById('vrr-child-age').value;
+            const ageLabel = age === 'teen' ? 'подросток (12-17 лет)' : 'дошкольник (3-11 лет)';
+
+            let titleText = '';
+            if (respondent === 'child') {
+                const target = document.getElementById('vrr-child-target').value;
+                const targetLabel = target === 'mother' ? 'мать' : target === 'father' ? 'отец' : 'обоих родителей';
+                titleText = `ВРР: Ребёнок оценивает ${targetLabel} (${ageLabel})`;
+            } else {
+                const parentLabel = respondent === 'mother' ? 'Мать' : 'Отец';
+                titleText = `ВРР: ${parentLabel} оценивает ребёнка (${ageLabel})`;
+            }
+            document.getElementById('auto-title-display').textContent = 'Название: ' + titleText;
+        }
+
+        function loadVRRQuestions() {
+            const age = document.getElementById('vrr-child-age').value;
+            // Проверка на случай, если VRR_METHOD ещё не загрузился
+            if (typeof VRR_METHOD === 'undefined' || !VRR_METHOD.questions) {
+                console.warn('VRR_METHOD не загружен');
+                return;
+            }
+            let questions = age === 'teen' ? VRR_METHOD.questions.teen : VRR_METHOD.questions.preschool;
+
+            vrrQuestions = questions.map((text, index) => ({
+                id: index + 1,
+                text: text,
+                options: [
+                    { text: 'Абсолютно неверно', score: 1 },
+                    { text: 'Скорее неверно', score: 2 },
+                    { text: 'Затрудняюсь ответить', score: 3 },
+                    { text: 'Скорее верно', score: 4 },
+                    { text: 'Абсолютно верно', score: 5 }
+                ]
+            }));
+            renderVRRQuestions();
+        }
+
+        function renderVRRQuestions() {
+            const container = document.getElementById('vrr-questions-container');
+            container.innerHTML = '';
+            vrrQuestions.forEach((q, index) => {
+                const optionsHtml = q.options.map((opt, oi) => `
+                    <div class="vrr-answer-option">
+                        <input type="radio" name="q${index}_preview" id="q${index}_${oi}" value="${opt.score}">
+                        <label for="q${index}_${oi}">${opt.text}<br><strong>${opt.score}</strong></label>
+                    </div>
+                `).join('');
+
+                const card = document.createElement('div');
+                card.className = 'question-block';
+                card.style.marginBottom = '16px';
+                card.style.padding = '20px';
+                card.style.borderRadius = '12px';
+                card.innerHTML = `
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                        <span style="font-weight:600;color:var(--dark-green);">Вопрос ${index + 1}</span>
+                        <button class="remove-question" onclick="removeVRRQuestion(${index})" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:18px;">✕</button>
+                    </div>
+                    <div class="form-group" style="margin-bottom:16px;">
+                        <input type="text" value="${(q.text || '').replace(/"/g, '&quot;')}" onchange="updateVRRQuestion(${index}, this.value)" style="width:100%;padding:12px 16px;border:1px solid var(--border);border-radius:10px;font-size:14px;background:var(--lighter-green);outline:none;box-sizing:border-box;">
+                    </div>
+                    <div class="vrr-answer-options">${optionsHtml}</div>
+                `;
+                container.appendChild(card);
+            });
+            document.getElementById('vrr-questions-count').textContent = vrrQuestions.length;
+        }
+
+        function updateVRRQuestion(index, newText) { vrrQuestions[index].text = newText; }
+        function removeVRRQuestion(index) {
+            if (confirm('Удалить этот вопрос?')) {
+                vrrQuestions.splice(index, 1);
+                renderVRRQuestions();
+            }
+        }
+
+        async function createVRRTest() {
+            const user = requirePsychologist();
+            if (!user) return;
+
+            const respondent = document.getElementById('vrr-respondent').value;
+            const age = document.getElementById('vrr-child-age').value;
+            const ageLabel = age === 'teen' ? 'подросток (12-17 лет)' : 'дошкольник (3-11 лет)';
+
+            let target = 'child';
+            let titleSuffix = '';
+
+            if (respondent === 'child') {
+                target = document.getElementById('vrr-child-target').value;
+                const targetLabel = target === 'mother' ? 'мать' : target === 'father' ? 'отец' : 'обоих родителей';
+                titleSuffix = `Ребёнок оценивает ${targetLabel} (${ageLabel})`;
+            } else {
+                const parentLabel = respondent === 'mother' ? 'Мать' : 'Отец';
+                titleSuffix = `${parentLabel} оценивает ребёнка (${ageLabel})`;
+            }
+
+            if (vrrQuestions.length === 0) {
+                showNotification('Ошибка загрузки вопросов ВРР', 'error');
+                return;
+            }
+
+            const result = await Storage.createTest({
+                title: `ВРР: ${titleSuffix}`,
+                description: 'Методика ВРР (Марковская И.М.) — Взаимодействие родитель – ребенок',
+                methodology: 'ВРР',
+                questions: vrrQuestions,
+                createdBy: user.id,
+                createdByName: user.fullName || user.login,
+                status: 'active',
+                participants: 0,
+                methodData: {
+                    type: 'vrr',
+                    respondent: respondent, // mother, father, child
+                    target: target,         // child, mother, father, both
+                    form: age               // preschool, teen
+                }
+            });
+
+            if (result && result.success) {
+                showNotification('Тест ВРР успешно создан!', 'success');
+                setTimeout(() => { window.location.href = 'my-tests.html'; }, 1500);
+            } else {
+                showNotification('Ошибка создания теста', 'error');
+            }
+        }
+
+        // ===== ИСПРАВЛЕННАЯ ЛОГИКА ПОЛЕЙ ВРР =====
+        function updateVRRFields() {
+            const respondent = document.getElementById('vrr-respondent').value;
+            const ageLabel = document.getElementById('vrr-age-label');
+            const targetGroup = document.getElementById('vrr-child-target-group');
+            const explain = document.getElementById('vrr-explain');
+
+            if (respondent === 'child') {
+                targetGroup.style.display = 'block';
+                ageLabel.textContent = 'Возраст ребёнка, заполняющего опросник *';
+                const target = document.getElementById('vrr-child-target').value;
+                const who = target === 'mother' ? 'мать' : target === 'father' ? 'отца' : 'обоих родителей';
+            } else {
+                targetGroup.style.display = 'none';
+                ageLabel.textContent = 'Возраст оцениваемого ребёнка *';
+                const who = respondent === 'mother' ? 'Мать' : 'Отец';
+            }
+        }
+
+        // ===== ИНИЦИАЛИЗАЦИЯ =====
+        document.addEventListener('DOMContentLoaded', function() {
+            requirePsychologist();
+            showTypeSelector();
+        });
+    </script>
+</body>
+</html>

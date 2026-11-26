@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Прохождение теста — PsychoVector</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="data:,">
+    <style>
+        .test-question-card { position: relative; transition: all 0.3s ease; }
+        .test-question-card.answered { border-left: 4px solid var(--dark-green); }
+        .test-question-card.answered .q-number { color: var(--dark-green); font-weight: 700; }
+        .test-question-card.current { box-shadow: 0 0 0 3px rgba(61,122,82,0.25); }
+
+        .progress-counter {
+            position: sticky; top: 0; background: var(--white);
+            padding: 14px 22px; border-radius: 12px; box-shadow: var(--shadow);
+            margin-bottom: 16px; display: flex; justify-content: space-between;
+            align-items: center; z-index: 10; flex-wrap: wrap; gap: 10px;
+        }
+        .progress-counter .counter-text { font-size: 14px; color: var(--text-muted); }
+        .progress-counter .counter-text strong { color: var(--dark-green); font-size: 18px; }
+        .progress-counter .counter-status { font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 20px; }
+        .counter-status.incomplete { background: #fff3e0; color: #f57f17; }
+        .counter-status.complete { background: #e8f5e9; color: #2e7d32; }
+
+        /* ===== НАВИГАЦИЯ ПО ВОПРОСАМ ===== */
+        .question-nav {
+            background: var(--white); border-radius: 12px; box-shadow: var(--shadow);
+            padding: 16px 20px; margin-bottom: 24px;
+        }
+        .question-nav-title {
+            font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+            color: var(--text-muted); margin-bottom: 12px; font-weight: 600;
+        }
+        .question-nav-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+            gap: 8px;
+        }
+        .nav-btn {
+            aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+            border: 1px solid var(--border); border-radius: 8px; background: var(--white);
+            color: var(--text-muted); font-size: 13px; font-weight: 600; cursor: pointer;
+            transition: all 0.2s; font-family: inherit;
+        }
+        .nav-btn:hover { border-color: var(--medium-green); transform: translateY(-2px); }
+        .nav-btn.answered {
+            background: var(--dark-green); color: var(--white); border-color: var(--dark-green);
+        }
+        .nav-btn.current { box-shadow: 0 0 0 3px rgba(61,122,82,0.3); }
+        .nav-legend {
+            display: flex; gap: 16px; margin-top: 12px; font-size: 12px; color: var(--text-muted);
+            flex-wrap: wrap;
+        }
+        .nav-legend span { display: inline-flex; align-items: center; gap: 6px; }
+        .legend-dot { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
+        .legend-dot.done { background: var(--dark-green); }
+        .legend-dot.todo { background: var(--white); border: 1px solid var(--border); }
+    </style>
+</head>
+<body>
+    <nav class="nav-bar">
+        <div class="logo">PsychoVector</div>
+        <div class="nav-links"><a href="dashboard.html">Личный кабинет</a></div>
+        <button class="nav-logout" onclick="handleLogout()">Выйти</button>
+    </nav>
+
+    <div class="page-container">
+        <h1 id="test-title-display">Название теста</h1>
+        <p id="test-description-display" style="color:var(--text-muted);margin-bottom:20px;font-size:15px;"></p>
+
+        <div class="progress-counter">
+            <div class="counter-text">Отвечено: <strong id="answered-count">0</strong> из <strong id="total-count">0</strong></div>
+            <div class="counter-status incomplete" id="progress-status">Продолжайте отвечать</div>
+        </div>
+
+        <div class="question-nav">
+            <div class="question-nav-title">Навигация по вопросам</div>
+            <div class="question-nav-grid" id="question-nav-grid"></div>
+            <div class="nav-legend">
+                <span><i class="legend-dot done"></i> Отвечен</span>
+                <span><i class="legend-dot todo"></i> Не отвечен</span>
+            </div>
+        </div>
+
+        <div class="test-progress"><div class="test-progress-bar" id="progress-bar" style="width:0%"></div></div>
+
+        <div id="test-area">
+            <div id="questions-container"></div>
+            <div style="text-align:center;margin-top:32px;">
+                <button class="btn-primary" onclick="submitTest()" style="padding:16px 48px;font-size:16px;">Завершить тестирование</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        let currentTest = null;
+        let answers = {};
+        let progressKey = '';
+
+        document.addEventListener('DOMContentLoaded', async function() { await loadTestForUser(); });
+
+        function getProgressKey(testId) {
+            const user = Storage.getCurrentUser();
+            return `pv_test_progress_${testId}_${user ? user.id : 'anonymous'}`;
+        }
+        function saveProgress() {
+            if (!currentTest) return;
+            try { localStorage.setItem(progressKey, JSON.stringify({ answers, savedAt: new Date().toISOString() })); } catch (e) {}
+        }
+        function loadProgress() {
+            try {
+                const saved = localStorage.getItem(progressKey);
+                if (saved) { answers = JSON.parse(saved).answers || {}; return true; }
+            } catch (e) {}
+            return false;
+        }
+
+        async function loadTestForUser() {
+            const params = new URLSearchParams(window.location.search);
+            const testId = params.get('id');
+            const tests = await Storage.getTests();
+            currentTest = tests.find(t => t.id === testId);
+
+            if (!currentTest) {
+                document.getElementById('test-area').innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:40px;">Тест не найден.</p>';
+                return;
+            }
+
+            const user = Storage.getCurrentUser();
+            if (user) {
+                const results = await Storage.getResults();
+                if (results.find(r => r.testId === testId && r.userId === user.id)) {
+                    document.getElementById('test-title-display').textContent = currentTest.title;
+                    document.getElementById('test-area').innerHTML = `
+                        <div class="form-card" style="text-align:center;padding:48px;">
+                            <div style="font-size:64px;margin-bottom:16px;">✅</div>
+                            <h2 style="color:var(--dark-green);margin-bottom:16px;">Вы уже прошли этот тест</h2>
+                            <button class="btn-primary" onclick="window.location.href='dashboard.html'">Вернуться в кабинет</button>
+                        </div>`;
+                    return;
+                }
+            }
+
+            document.getElementById('test-title-display').textContent = currentTest.title;
+            document.getElementById('test-description-display').textContent = currentTest.description || '';
+
+            progressKey = getProgressKey(testId);
+            loadProgress();
+
+            const container = document.getElementById('questions-container');
+            container.innerHTML = '';
+            document.getElementById('total-count').textContent = currentTest.questions.length;
+
+            currentTest.questions.forEach((q, index) => {
+                const card = document.createElement('div');
+                card.className = 'test-question-card';
+                card.id = `question-${index}`;
+                card.dataset.questionIndex = index;
+                if (answers[index] !== undefined) card.classList.add('answered');
+
+                const qText = q.text || 'Вопрос без текста';
+                const optionsHtml = q.options.map((opt, oi) => {
+                    const isChecked = answers[index] === oi ? 'checked' : '';
+                    const optText = opt.text || 'Вариант ответа';
+                    return `<label class="answer-option">
+                        <input type="radio" name="q${index}" value="${oi}" ${isChecked} onchange="selectAnswer(${index}, ${oi})">
+                        <span>${optText}</span>
+                    </label>`;
+                }).join('');
+
+                card.innerHTML = `
+                    <div class="q-number">Вопрос ${index + 1} из ${currentTest.questions.length}</div>
+                    <div class="q-text">${qText}</div>
+                    <div class="answer-options">${optionsHtml}</div>
+                `;
+                container.appendChild(card);
+            });
+
+            buildQuestionNav();
+            updateProgress();
+        }
+
+        function buildQuestionNav() {
+            const grid = document.getElementById('question-nav-grid');
+            if (!grid || !currentTest) return;
+            grid.innerHTML = '';
+            currentTest.questions.forEach((_, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'nav-btn' + (answers[index] !== undefined ? ' answered' : '');
+                btn.textContent = index + 1;
+                btn.title = `Перейти к вопросу ${index + 1}`;
+                btn.onclick = () => jumpToQuestion(index);
+                grid.appendChild(btn);
+            });
+        }
+
+        function updateNavButton(index) {
+            const btn = document.querySelectorAll('.nav-btn')[index];
+            if (btn) btn.classList.add('answered');
+        }
+
+        function jumpToQuestion(index) {
+            const el = document.getElementById(`question-${index}`);
+            if (!el) return;
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            document.querySelectorAll('.test-question-card').forEach(c => c.classList.remove('current'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('current'));
+            el.classList.add('current');
+            const btn = document.querySelectorAll('.nav-btn')[index];
+            if (btn) btn.classList.add('current');
+            setTimeout(() => el.classList.remove('current'), 2000);
+        }
+
+        function selectAnswer(questionIndex, optionIndex) {
+            answers[questionIndex] = optionIndex;
+            saveProgress();
+            updateProgress();
+            const card = document.querySelector(`.test-question-card[data-question-index="${questionIndex}"]`);
+            if (card) card.classList.add('answered');
+            updateNavButton(questionIndex);
+        }
+
+        function updateProgress() {
+            if (!currentTest) return;
+            const total = currentTest.questions.length;
+            const answered = Object.keys(answers).length;
+            document.getElementById('progress-bar').style.width = (answered / total * 100) + '%';
+            document.getElementById('answered-count').textContent = answered;
+            const statusEl = document.getElementById('progress-status');
+            if (answered === total) {
+                statusEl.textContent = '✓ Все вопросы отвечены';
+                statusEl.className = 'counter-status complete';
+            } else {
+                statusEl.textContent = `Осталось ${total - answered} вопросов`;
+                statusEl.className = 'counter-status incomplete';
+            }
+        }
+
+        async function submitTest() {
+            if (!currentTest) return;
+            const totalQuestions = currentTest.questions.length;
+            const answered = Object.keys(answers).length;
+            if (answered < totalQuestions) {
+                const missing = [];
+                for (let i = 0; i < totalQuestions; i++) if (answers[i] === undefined) missing.push(i + 1);
+                showNotification(`Не отвечено на вопросы: ${missing.join(', ')}`, 'error');
+                return;
+            }
+            const user = Storage.getCurrentUser();
+            let totalScore = 0, maxScore = 0;
+            currentTest.questions.forEach((q, index) => {
+                const selectedOption = q.options[answers[index]];
+                if (selectedOption) totalScore += selectedOption.score || 0;
+                maxScore += Math.max(...q.options.map(o => o.score || 0));
+            });
+            const result = {
+                id: Date.now().toString(), testId: currentTest.id, testTitle: currentTest.title,
+                userId: user ? user.id : 'anonymous', userName: user ? (user.fullName || user.login) : 'Аноним',
+                userEmail: user ? user.email : '', answers, score: totalScore, maxScore,
+                completedAt: new Date().toISOString()
+            };
+            const saved = await Storage.saveResult(result);
+            if (saved && saved.success) {
+                localStorage.removeItem(progressKey);
+                const tests = await Storage.getTests();
+                const testIdx = tests.findIndex(t => t.id === currentTest.id);
+                if (testIdx !== -1) { tests[testIdx].participants = (tests[testIdx].participants || 0) + 1; await Storage.saveTests(tests); }
+                showNotification('Тест завершён!', 'success');
+                document.getElementById('test-area').innerHTML = `
+                    <div class="form-card" style="text-align:center;padding:48px;">
+                        <div style="font-size:64px;margin-bottom:16px;">🎉</div>
+                        <h2 style="color:var(--dark-green);margin-bottom:16px;">Тест завершён!</h2>
+                        <p style="font-size:18px;color:var(--text-dark);margin-bottom:8px;">Ваш результат: <strong>${totalScore} из ${maxScore} баллов</strong></p>
+                        <button class="btn-primary" onclick="window.location.href='dashboard.html'" style="margin-top:24px;">Вернуться в кабинет</button>
+                    </div>`;
+            } else { showNotification('Ошибка сохранения', 'error'); }
+        }
+    </script>
+</body>
+</html>
