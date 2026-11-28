@@ -305,6 +305,37 @@
                 showNotification('Ошибка соединения с сервером', 'error');
             }
         }
+
+        // ===== АВТООБРАБОТКА ССЫЛКИ ИЗ ПИСЬМА =====
+        document.addEventListener('DOMContentLoaded', function() {
+            const params = new URLSearchParams(window.location.search);
+            const code = params.get('code');
+            const email = params.get('email');
+
+            if (code && email) {
+                // Заполняем поля
+                document.getElementById('verify-email').value = email;
+                document.getElementById('verify-code').value = code;
+
+                // Сохраняем в localStorage как будто код был запрошен
+                localStorage.setItem('pv_verificationCode', JSON.stringify({
+                    code: code,
+                    email: email,
+                    expiresAt: Date.now() + 10 * 60 * 1000
+                }));
+
+                // Переходим сразу на шаг 2
+                goToStep(2);
+
+                // Автоматически подтверждаем код через 300мс (чтобы UI успел отрисоваться)
+                setTimeout(() => {
+                    verifyCode();
+                }, 300);
+
+                // Очищаем URL от параметров (чтобы код не торчал в адресной строке)
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        });
     </script>
 </body>
 </html>
